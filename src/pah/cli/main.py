@@ -91,6 +91,7 @@ def _parser() -> argparse.ArgumentParser:
     from pah.cli import build as build_cli  # noqa: PLC0415
     from pah.cli import design as design_cli  # noqa: PLC0415
     from pah.cli import eval as eval_cli  # noqa: PLC0415
+    from pah.cli import export as export_cli  # noqa: PLC0415
     from pah.cli import plugins as plugins_cli  # noqa: PLC0415
     from pah.cli import preview as preview_cli  # noqa: PLC0415
     from pah.cli import providers as providers_cli  # noqa: PLC0415
@@ -103,6 +104,7 @@ def _parser() -> argparse.ArgumentParser:
     serve_cli.add_parser(groups)
     design_cli.add_parser(groups)
     eval_cli.add_parser(groups)
+    export_cli.add_parser(groups)
     plugins_cli.add_parser(groups)
     providers_cli.add_parser(groups)
 

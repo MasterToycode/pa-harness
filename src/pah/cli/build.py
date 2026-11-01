@@ -168,6 +168,23 @@ def execute(
             note(f"preview {png.name} + {html.name}")
         except Exception as error:  # noqa: BLE001 - the STLs are the deliverable
             note(f"preview failed: {type(error).__name__}: {error}")
+
+    # Printing files, automatically: the reason this harness exists is a part on a
+    # printer, so the STL/3MF and the manifest are part of the build, not a second
+    # command someone has to know about.
+    try:
+        from pah.cli.export import export_run  # noqa: PLC0415
+
+        manifest = export_run(target)
+        result["print_manifest"] = str(target / "print" / "print-manifest.json")
+        result["printable"] = bool(manifest["printable"])
+        result["print_problems"] = list(manifest["problems"])
+        verb = "printable" if manifest["printable"] else "NOT printable"
+        note(f"print files {target / 'print'} ({verb})")
+    except Exception as error:  # noqa: BLE001 - a failed export must not lose the part
+        result["printable"] = None
+        result["print_problems"] = [f"export failed: {type(error).__name__}: {error}"]
+        note(f"export failed: {type(error).__name__}: {error}")
     return result
 
 
@@ -266,6 +283,8 @@ def _print_artifacts(result: dict) -> None:
     print(f"  spec     {result['spec_path']}")
     print(f"  report   {result['report_path']}")
     print(f"  trace    {result['trace_path']}")
+    if result.get("print_manifest"):
+        print(f"  打印件   {result['print_manifest']}   ← STL/3MF 在同目录 print/ 下")
     print()
     print(f"  generator {result['generator']}   verdict {result['verdict']}   "
           f"rounds {result['rounds']}   {result['elapsed_s']}s")
@@ -279,6 +298,10 @@ def _print_artifacts(result: dict) -> None:
         print(f"  可打印   {'是' if printable.get('ok') else '否'}  "
               f"({printable.get('validated')}; 阻断={printable.get('blocking') or '无'}; "
               f"水密={printable.get('watertight')})")
+    if result.get("printable") is not None:
+        print(f"  打印文件 {'已写出 print/（3MF + STL + manifest）' if result['printable'] else '已写出但标记为不可打印'}")
+        for problem in result.get("print_problems") or []:
+            print(f"    · {problem}")
     for note in result["notes"]:
         print(f"  未评估 · {note[:120]}")
     print()

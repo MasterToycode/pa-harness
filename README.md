@@ -24,6 +24,8 @@ pah providers doctor --role llm --call # 花一次极小调用，证明模型能
 
 # 3) 生成 + 看
 pah build "a pin with a flat round head that seats into a blind socket" --kind peg_hole --rounds 1
+# 一次 build 产出：preview.png / preview.html / geometry/*.stl / print/*.3mf / report.json
+pah export runs/build-<时间戳>         # 只重出打印件（3MF + STL + manifest）
 pah preview runs/build-<时间戳>        # 只重新出图
 ```
 
@@ -35,6 +37,7 @@ pah preview runs/build-<时间戳>        # 只重新出图
 | `preview.html` | 单文件 3D 浏览器，双击即可旋转缩放（STL 已内嵌，离线可用） |
 | `geometry/body.stl`、`geometry/insert.stl` | **你的零件**，可直接进切片软件 |
 | `report.json` | 判定、每轮动作、成本、**可装配/可打印**结论 + 未评估项 |
+| `print/assembly.3mf`、`print/*.stl`、`print/print-manifest.json` | 给打印机的文件（mm 单位、多零件、水密与体积记录）。**URDF/GLB 不是打印格式**，命令会拒绝它们 |
 | `trace.jsonl` | 逐事件轨迹（可复现、可恢复） |
 | `spec.json` | 这次用的设计意图（改它再跑一次即可） |
 
@@ -89,6 +92,8 @@ pah serve            # http://127.0.0.1:8321
 
 适配器要做三件事，代码里已实现并写了理由：**闭合**（生成模型给的是开放壳 → 体素重建）、**对齐**（长轴朝 Z）、**归一化**（等比缩放到设计销径 + 裁到设计包络）。接口尺寸永远由 spec 决定，不由模型决定。
 
+生成的零件通常非凸（实测中空销的凸包是实体的 2.4×），MuJoCo 只能碰撞凸包。物理档用 **CoACD 凸分解**（`pip install coacd`）把零件拆成若干凸包再仿真，实测 2k 面 + 12 凸包上限 ≈ 17 s/次；没装 coacd 时如实报 `not evaluated`。
+
 ## 目录
 
 ```text
@@ -112,13 +117,14 @@ src/pah/
 | P0 六条判据 | `python scripts/acceptance.py` **6/6** |
 | 混元 3D 真生成 | Ø9.70 mm 销、水密 64k 面、裁到 14 mm 包络、就位误差 0 |
 | 生成件形态验收 | `insert_material`：实测体积/设计体积 = 0.286 → 判 `insufficient_material`（空壳销）；旧版会误判 repaired |
-| 测试 | **670 passed** |
+| 物理档（凸分解后） | 空壳销现在会真仿真：8 个凸包、drift 0.349 mm、穿深 0.297 mm → `dynamic_penetration` |
+| 测试 | **690+ passed** |
 
 口径纪律：`repaired_by_policy`、`environment_errors`、`not_evaluated`（能力边界）三列**永不合并**；`not_evaluated` 不等于通过。
 
 ## 下一步（未做，不是遗漏）
 
-1. 生成件形态验收：已加 `insert_material`（体积比 0.55–1.8），中空销会被判 `insufficient_material`；下一步是在**导出文件**上再判壁厚/悬垂（当前在内存网格上判）。
+1. 生成件形态验收：`insert_material` 已判体积比（0.55–1.8）；空壳销实测比值 0.286 → 判不合格。策略侧对 `insufficient_material` 会输出 `regenerate_interface` + `prompt_hint`（"make it a SOLID part…"），该提示经 `spec.provenance` 进入生成器 prompt —— 这是 LLM 指导生成模型的唯一通道（不碰几何）。
 2. 评测集扩充：现在是 dev 集，正式结论要独立测试集。
 3. DiT/CAD 适配器：`Materializer` 端口已留，混元是第一个可用实例。
 4. case memory 落账：`policy.flush(ticket.rounds)` 未接，pass 轮不进记忆。

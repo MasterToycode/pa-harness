@@ -428,12 +428,87 @@ def _polygon_radius(hull: np.ndarray, n_angles: int) -> np.ndarray:
     return radii
 
 
-def _insert_shape(insert: trimesh.Trimesh, local: np.ndarray, n_angles: int) -> dict:
-    """Cylinder when the cross-section is round, convex hull otherwise.
+def _convex_parts(
+    vertices_local: np.ndarray,
+    faces_local: np.ndarray,
+    *,
+    max_hulls: int = 12,
+    threshold: float = 0.15,
+    preprocess_resolution: int = 24,
+    resolution: int = 600,
+    decimate_to: int = 2000,
+) -> list[tuple[np.ndarray, np.ndarray]] | None:
+    """Split a non-convex solid into convex pieces with CoACD, or `None`.
 
-    Both are approximations of the real solid and both are named in `model`:
-    the cylinder is exact for the *maximum* radius (so it errs large), and the hull
-    is what MuJoCo does to any mesh geom (so a non-convex insert is refused).
+    MuJoCo collides any mesh geom as its convex hull, so a concave part cannot be
+    simulated faithfully as one geom. The first version of this tool therefore refused
+    non-convex inserts ("not evaluated") — honest but useless for generated parts,
+    which are almost never convex (the measured tube was 2.4x its hull).
+
+    Decomposing into convex hulls is the standard answer: the body gets one geom per
+    piece, so the undercut survives instead of being averaged away. CoACD is an
+    optional dependency (`pip install coacd`); when it is absent this returns `None`
+    and the caller keeps the old refusal, which is the boundary the report names.
+
+    **Cost is the reason for the small settings.** Measured on a 20 k-face generated
+    insert: default resolution 2000 / 48 hulls took **86 s**; decimating to 2 k faces
+    and asking for at most 12 hulls at resolution 600 takes **~17 s** and still returns
+    8 hulls that keep the tube's cavity. The physics tier runs once per design (the
+    loop caches verification), so 17 s is affordable where 86 s would not be.
+
+    Deterministic for a fixed input: `seed=0`, no time-dependent heuristic.
+    """
+    try:
+        import coacd  # noqa: PLC0415 - optional, and only this path needs it
+    except Exception:  # noqa: BLE001 - absent package is a boundary, not a fault
+        return None
+    try:
+        mesh_local = trimesh.Trimesh(
+            vertices=np.asarray(vertices_local, dtype=float),
+            faces=np.asarray(faces_local, dtype=np.int64),
+            process=False,
+        )
+        if len(mesh_local.faces) > decimate_to:
+            try:
+                mesh_local = mesh_local.simplify_quadric_decimation(face_count=decimate_to)
+            except Exception:  # noqa: BLE001 - use the full mesh rather than fail
+                pass
+        mesh = coacd.Mesh(
+            np.ascontiguousarray(mesh_local.vertices, dtype=np.float64),
+            np.ascontiguousarray(mesh_local.faces, dtype=np.int32),
+        )
+        parts = coacd.run_coacd(
+            mesh,
+            threshold=threshold,
+            max_convex_hull=max_hulls,
+            preprocess_resolution=preprocess_resolution,
+            resolution=resolution,
+            seed=0,
+        )
+    except Exception:  # noqa: BLE001 - a failed decomposition is the same boundary
+        return None
+    cleaned: list[tuple[np.ndarray, np.ndarray]] = []
+    for part_vertices, part_faces in parts:
+        vertices = np.asarray(part_vertices, dtype=float)
+        faces = np.asarray(part_faces, dtype=np.int32)
+        if len(vertices) >= 4 and len(faces) >= 4:
+            cleaned.append((vertices, faces))
+    return cleaned or None
+
+
+def _insert_shape(
+    insert: trimesh.Trimesh,
+    local: np.ndarray,
+    local_vertices: np.ndarray,
+    local_faces: np.ndarray,
+    n_angles: int,
+) -> dict:
+    """Cylinder when the cross-section is round, else convex hull or CoACD parts.
+
+    Every approximation is named in `model` so a certificate can say what it measured:
+    the cylinder is exact for the *maximum* radius (it errs large), the hull is what
+    MuJoCo does to any mesh geom, and the decomposed parts preserve concavity at the
+    cost of tiny seams between hulls.
     """
     radii = _polygon_radius(_convex_hull_2d(local), n_angles)
     finite = radii[np.isfinite(radii) & (radii > 0.0)]
@@ -452,19 +527,31 @@ def _insert_shape(insert: trimesh.Trimesh, local: np.ndarray, n_angles: int) -> 
     hull = insert.convex_hull
     solid_volume = float(insert.volume) if insert.is_watertight else 0.0
     hull_volume = float(hull.volume)
+    hull_over_solid = (hull_volume / solid_volume) if solid_volume > 0.0 else None
     if solid_volume > 0.0 and hull_volume > solid_volume * 1.02:
-        raise SettleError(
-            "non_convex_insert",
-            f"convex hull is {hull_volume / solid_volume:.3f}x the solid; MuJoCo collides "
-            "a mesh as its hull, which would average away the very undercut that "
-            "retains this joint",
-        )
+        parts = _convex_parts(local_vertices, local_faces)
+        if parts is None:
+            raise SettleError(
+                "non_convex_insert",
+                f"convex hull is {hull_volume / solid_volume:.3f}x the solid and CoACD is "
+                "not installed, so MuJoCo could only collide the hull and would average "
+                "away the undercut. Install `coacd` to simulate concave inserts.",
+            )
+        return {
+            "kind": "convex_parts",
+            "radius_mm": radius,
+            "half_len_mm": half_len,
+            "rounding_error": rounding,
+            "hull_over_solid": hull_over_solid,
+            "parts": parts,
+            "decomposition": f"coacd: {len(parts)} convex hulls",
+        }
     return {
         "kind": "mesh_hull",
         "radius_mm": radius,
         "half_len_mm": half_len,
         "rounding_error": rounding,
-        "hull_over_solid": (hull_volume / solid_volume) if solid_volume > 0.0 else None,
+        "hull_over_solid": hull_over_solid,
         "hull_faces": hull.faces,
     }
 
@@ -643,7 +730,7 @@ def _xml(
     release_mm: tuple[float, float],
     friction: float,
     density: float,
-    mesh_path: Path | None,
+    mesh_paths: list[Path] | None,
 ) -> str:
     """The MJCF for one settle. Local frame: +Z is the mate axis, origin the seat."""
     lines = [
@@ -654,12 +741,11 @@ def _xml(
         f'  <default><geom solref="0.004 1" solimp="0.95 0.99 0.001"'
         f' friction="{friction:.4f} 0.005 0.0001"/></default>',
     ]
-    if mesh_path is not None:
-        lines += [
-            "  <asset>",
-            f'    <mesh name="insert_hull" file="{mesh_path.as_posix()}"/>',
-            "  </asset>",
-        ]
+    if mesh_paths:
+        lines.append("  <asset>")
+        for index, path in enumerate(mesh_paths):
+            lines.append(f'    <mesh name="{_part_name(insert, index)}" file="{path.as_posix()}"/>')
+        lines.append("  </asset>")
     lines.append("  <worldbody>")
     for index, (size, position, quat) in enumerate(boxes):
         lines.append(
@@ -694,20 +780,34 @@ def _xml(
             f' size="{insert["radius_mm"] * MM_PER_M:.9f} {insert["half_len_mm"] * MM_PER_M:.9f}"'
             f' density="{density:.3f}" rgba="0.90 0.45 0.20 1"/>'
         )
+    elif insert["kind"] == "convex_parts":
+        # One rigid body, several convex geoms: this is what keeps a concave part's
+        # real shape in the contact model instead of its average.
+        for index in range(len(insert["parts"])):
+            lines.append(
+                f'      <geom name="insert_part_{index}" type="mesh"'
+                f' mesh="{_part_name(insert, index)}"'
+                f' density="{density:.3f}" rgba="0.90 0.45 0.20 1"/>'
+            )
     else:
         lines.append(
-            f'      <geom name="insert" type="mesh" mesh="insert_hull"'
+            f'      <geom name="insert" type="mesh" mesh="{_part_name(insert, 0)}"'
             f' density="{density:.3f}" rgba="0.90 0.45 0.20 1"/>'
         )
     lines += ["    </body>", "  </worldbody>", "</mujoco>"]
     return "\n".join(lines)
 
 
-def _write_hull(
-    mesh_dir: Path, vertices_local_mm: np.ndarray, faces: np.ndarray
+def _part_name(insert: dict, index: int) -> str:
+    """The MJCF mesh name for one insert geom (single hull vs decomposed part)."""
+    return f"insert_part_{index}" if insert["kind"] == "convex_parts" else "insert_hull"
+
+
+def _write_obj(
+    mesh_dir: Path, name: str, vertices_local_mm: np.ndarray, faces: np.ndarray
 ) -> Path:
-    """The insert's convex hull as an OBJ in the local frame, written in metres."""
-    path = mesh_dir / "insert_hull.obj"
+    """One insert geom as an OBJ in the local frame, written in metres."""
+    path = mesh_dir / f"{name}.obj"
     vertices = vertices_local_mm * MM_PER_M
     body = [f"v {x:.9f} {y:.9f} {z:.9f}" for x, y, z in vertices]
     body += [f"f {int(a) + 1} {int(b) + 1} {int(c) + 1}" for a, b, c in faces]
@@ -783,7 +883,7 @@ def settle(
         )
     wall_min = float(min(sample[0] for sample in measured))
     wall_max = float(max(sample[0] for sample in measured))
-    shape = _insert_shape(insert, local_insert, lim.n_angles)
+    shape = _insert_shape(insert, local_insert, local_insert, insert.faces, lim.n_angles)
     if wall_min < 0.5 * shape["radius_mm"]:
         raise SettleError(
             "cavity_implausible",
@@ -812,12 +912,17 @@ def settle(
 
     started = time.perf_counter()
     with tempfile.TemporaryDirectory(prefix="pah-settle-") as tmp:
-        mesh_path = None
+        mesh_paths: list[Path] = []
         if shape["kind"] == "mesh_hull":
             hull = insert.convex_hull
-            mesh_path = _write_hull(
-                Path(tmp), (hull.vertices - seat) @ basis, shape["hull_faces"]
-            )
+            mesh_paths = [
+                _write_obj(Path(tmp), "insert_hull", (hull.vertices - seat) @ basis, shape["hull_faces"])
+            ]
+        elif shape["kind"] == "convex_parts":
+            mesh_paths = [
+                _write_obj(Path(tmp), f"insert_part_{index}", vertices, faces)
+                for index, (vertices, faces) in enumerate(shape["parts"])
+            ]
         xml = _xml(
             limits=lim,
             gravity_local=gravity_local,
@@ -828,7 +933,7 @@ def settle(
             release_mm=release,
             friction=friction,
             density=density_kgm3,
-            mesh_path=mesh_path,
+            mesh_paths=mesh_paths,
         )
         try:
             model = mujoco.MjModel.from_xml_string(xml)
@@ -903,6 +1008,8 @@ def settle(
         "polygon_vertex_extra_mm": (wall_min / math.cos(math.pi / lim.n_angles)) - wall_min,
         "wall_sampling": {"angles": lim.n_angles, "heights": int(len(heights))},
         "insert_shape": shape["kind"],
+        "insert_decomposition": shape.get("decomposition"),
+        "insert_geoms": len(shape["parts"]) if shape["kind"] == "convex_parts" else 1,
         "insert_rounding_error_frac": round(shape["rounding_error"], 6),
         "hull_over_solid": shape.get("hull_over_solid"),
         "release_offset_mm": release[0],

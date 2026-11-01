@@ -203,14 +203,46 @@ def test_unmeasurable_mesh_is_not_evaluated_not_failed(verifier: PhysicsSettle) 
     assert verifier.last_note.startswith("physics not evaluated: insert_not_watertight")
 
 
-def test_non_convex_insert_is_a_note_not_a_failure(verifier: PhysicsSettle) -> None:
-    """MuJoCo collides a mesh as its hull; the memory has to say so instead of inventing.
+def test_non_convex_insert_is_simulated_via_convex_decomposition(verifier: PhysicsSettle) -> None:
+    """A concave part is simulated as convex pieces, not averaged into its hull.
 
-    A hook's undercut is the feature that retains the joint, and a hull would average it
-    away — the simulation would then describe a different part. The honest answer is
-    "not evaluated", and this is the case that used to block every non-convex design
-    with an environment certificate.
+    The first version refused this case outright ("not evaluated"), which made every
+    generated part unjudgeable: generative meshes are almost never convex (the measured
+    tube was 2.4x its hull). CoACD splits the solid, the body gets one geom per piece,
+    and the certificate records the decomposition so a reader knows what was simulated.
     """
+    try:
+        import coacd  # noqa: F401,PLC0415 - the optional dependency this test needs
+    except Exception:  # pragma: no cover - exercised only on a bare checkout
+        import pytest
+
+        pytest.skip("coacd not installed")
+
+    body, peg = _peg_hole_meshes(clearance_mm=0.15, engage_mm=8.0, through=False)
+    hook = trimesh.creation.box(extents=(4.0, 14.0, 4.0))
+    hook.apply_translation((0.0, 0.0, 6.0))
+    insert = trimesh.boolean.union([peg, hook], engine="manifold")
+    view = _view(clearance_mm=0.15, engage_mm=8.0, through=False)
+    view.meshes[view.spec.insert.id] = insert
+
+    certificates = verifier.check(view)
+
+    assert verifier.last_evaluated is True
+    assert verifier.last_sim_calls == 1
+    approximation = (certificates[0].magnitude.get("approximation") if certificates else None) or {}
+    if certificates:
+        assert approximation.get("insert_shape") == "convex_parts"
+        assert approximation.get("insert_geoms", 0) >= 2
+        assert "coacd" in str(approximation.get("insert_decomposition"))
+    else:  # a hook that happens to hold is still a real measurement
+        assert verifier.last_note == ""
+
+
+def test_non_convex_insert_without_coacd_is_a_note(verifier: PhysicsSettle, monkeypatch) -> None:
+    """When the decomposer is absent the honest answer is still "not evaluated"."""
+    from pah.tools import mujoco_settle
+
+    monkeypatch.setattr(mujoco_settle, "_convex_parts", lambda *_args, **_kwargs: None)
     body, peg = _peg_hole_meshes(clearance_mm=0.15, engage_mm=8.0, through=False)
     hook = trimesh.creation.box(extents=(4.0, 14.0, 4.0))
     hook.apply_translation((0.0, 0.0, 6.0))

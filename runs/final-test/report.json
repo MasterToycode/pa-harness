@@ -1,0 +1,176 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\final-test",
+    "policy": "rule",
+    "rounds_requested": 1,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.309,
+    "generator": "local:local-parametric"
+  },
+  "ticket": {
+    "id": "4a856101c5369bd354adef521466fa2d",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 1,
+      "used": 1,
+      "left": 0
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 13,
+      "left": 3
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 2,
+      "left": 6
+    },
+    "verifier_spend": {
+      "geom_calls": 12,
+      "sim_calls": 2
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "design-peg_hole",
+    "kind": "peg_hole",
+    "requirement": "a solid pin with a flat head seating into a blind socket",
+    "initial_content_key": "sha256:643dac22902faa71ecbf1444dfd172ea",
+    "final_content_key": "sha256:2e993b6594a707e1f6f29fb04c3d00c7",
+    "initial_clearance_mm": 0.1,
+    "final_clearance_mm": 0.35,
+    "final_revision": 3,
+    "provenance": {
+      "via": "pah build",
+      "prompt": "a solid pin with a flat head seating into a blind socket",
+      "pose": "builder:peg_hole.seated_pose_mm",
+      "design": "default",
+      "print_orientation": "declared (0,0,0) = print as modelled"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "insufficient_clearance -> set_clearance",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 13,
+      "sim_calls": 2,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "9686dd9ac51d8578577407607a10c2c8"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 0,
+    "not_evaluated_by": []
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "insert_material",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {}
+  },
+  "verdicts": {
+    "assemblable": {
+      "ok": true,
+      "blocking": [],
+      "not_evaluated": [],
+      "validated": "full"
+    },
+    "printable": {
+      "ok": true,
+      "blocking": [],
+      "not_evaluated": [],
+      "watertight": {
+        "body": true,
+        "insert": true
+      },
+      "validated": "full"
+    },
+    "meaning": "ok=false means a registered check proved a defect; 'not_evaluated' means that check did not run. Neither list is a pass claim, and the two are never added together."
+  },
+  "trace": {
+    "path": "runs\\final-test\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "9686dd9ac51d8578577407607a10c2c8"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\final-test\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\final-test\\geometry\\body.stl",
+        "hash": "sha256:d78aef59925e68582e4d50b8af4d4f6a",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\final-test\\geometry\\insert.stl",
+        "hash": "sha256:b02e1c3bc13bb286060294123ad87e09",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 20,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

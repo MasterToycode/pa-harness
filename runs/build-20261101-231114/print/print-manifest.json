@@ -1,0 +1,58 @@
+{
+ "schema": "pah-print-manifest/1",
+ "created": "2026-11-01T23:40:41",
+ "units": "mm",
+ "note": "STL and 3MF are printing formats. GLB is a viewer asset format and URDF is a robot description — neither is a manufacturing order, which is why this command refuses them.",
+ "parts": {
+  "body": {
+   "stl": "D:\\yanyi\\pa-harness\\runs\\build-20261101-231114\\geometry\\body.stl",
+   "watertight": true,
+   "volume_mm3": 28081.793,
+   "bounds_mm": [
+    [
+     -30.0,
+     -20.0,
+     -6.0
+    ],
+    [
+     30.0,
+     20.0,
+     6.0
+    ]
+   ],
+   "faces": 270,
+   "exported_stl": "D:\\yanyi\\pa-harness\\runs\\build-20261101-231114\\print\\body.stl"
+  },
+  "insert": {
+   "stl": "D:\\yanyi\\pa-harness\\runs\\build-20261101-231114\\geometry\\insert.stl",
+   "watertight": true,
+   "volume_mm3": 314.131,
+   "bounds_mm": [
+    [
+     -5.0,
+     -5.0,
+     -2.0
+    ],
+    [
+     5.0,
+     5.0,
+     12.0
+    ]
+   ],
+   "faces": 18858,
+   "exported_stl": "D:\\yanyi\\pa-harness\\runs\\build-20261101-231114\\print\\insert.stl"
+  }
+ },
+ "artifacts": [
+  "D:\\yanyi\\pa-harness\\runs\\build-20261101-231114\\print\\body.stl",
+  "D:\\yanyi\\pa-harness\\runs\\build-20261101-231114\\print\\insert.stl",
+  "D:\\yanyi\\pa-harness\\runs\\build-20261101-231114\\print\\assembly.3mf"
+ ],
+ "print_orientation_deg": null,
+ "generator": "hunyuan:python",
+ "verdicts": {},
+ "problems": [
+  "report has no printable verdict: printability was not evaluated"
+ ],
+ "printable": false
+}

@@ -396,9 +396,17 @@ class RegenerateInterfaceParams(_InterfaceParams):
     fills later, and it is deliberately the widest operator (it can change
     engagement, approach, feature placement) so that "the paradigm is right but
     its proportions are wrong" has somewhere to go.
+
+    `prompt_hint` is how a *decision* reaches a *generative model* without the model
+    ever seeing a vertex: when a part comes back hollow, no number in the design is
+    wrong, so the only honest action is "generate it again, but ask for a solid".
+    The hint is carried through `spec.provenance` to whichever adapter builds the
+    geometry (`examples/hunyuan3d_materializer.py` appends it to its prompt), and it is
+    allowed on its own — a regeneration that changes no number is exactly this case.
     """
 
     params: dict = Field(default_factory=dict)
+    prompt_hint: str | None = Field(default=None, max_length=600)
 
 
 # --------------------------------------------------------------------------- #
@@ -598,15 +606,26 @@ def _edit_switch_connector(spec: DesignSpec, params: dict) -> DesignSpec:
 
 def _edit_regenerate_interface(spec: DesignSpec, params: dict) -> DesignSpec:
     patch = dict(params.get("params") or {})
-    if not patch:
+    hint = str(params.get("prompt_hint") or "").strip()
+    if not patch and not hint:
         raise ValueError(
-            "regenerate_interface needs at least one parameter; a regeneration that "
-            "changes nothing is not a repair"
+            "regenerate_interface needs at least one parameter or a prompt hint; a "
+            "regeneration that changes nothing is not a repair"
         )
-    iface = spec.interface
-    return spec.with_interface(
-        params=_validated(iface.kind, {**iface.params, **patch})
-    )
+    updated = spec
+    if patch:
+        iface = spec.interface
+        updated = spec.with_interface(
+            params=_validated(iface.kind, {**iface.params, **patch})
+        )
+    if hint:
+        # The hint travels with the design, not with the policy: whichever adapter
+        # materialises this revision reads it from provenance, so replaying the spec
+        # reproduces the same prompt.
+        updated = updated.edit(
+            provenance={**updated.provenance, "prompt_hint": hint}
+        )
+    return updated
 
 
 # --------------------------------------------------------------------------- #

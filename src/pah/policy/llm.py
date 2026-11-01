@@ -65,8 +65,7 @@ __all__ = ["LlmPolicy", "OUTPUT_SCHEMA", "default_system_prompt"]
 _ENVIRONMENT = "environment"
 _PROMPT_NAME = "repair_policy.md"
 
-#: What one round's reply must look like. Sent as `json_schema` so a provider that
-#: supports structured output can enforce it; the client in `app/providers.py`
+#: What one round's reply must look like. Sent as `json_schema` so a provider that#: supports structured output can enforce it; the client in `app/providers.py`
 #: currently downgrades it to `response_format={"type": "json_object"}`, so this is
 #: documentation for the model as much as a constraint.
 OUTPUT_SCHEMA: dict[str, Any] = {
@@ -93,6 +92,34 @@ OUTPUT_SCHEMA: dict[str, Any] = {
     },
     "additionalProperties": False,
 }
+
+
+def _field_only_schema(model) -> dict:
+    """The parameter model's schema with every `description` removed.
+
+    The prose that documents an operator belongs to the humans reading this module:
+    it explains *why* an operator exists and mentions things like vertices, files and
+    tolerances. Sending that prose inside the observation is how geometry vocabulary
+    leaks back into the model's context even though the action space has no geometry
+    field in it — the contract's "the LLM's output type has no geometry" is about the
+    *shape of the decision*, and the observation should hold the same line.
+
+    Only structure survives: property names, types, enum values, required lists.
+    """
+    schema = model.model_json_schema()
+    return _strip_descriptions(schema)
+
+
+def _strip_descriptions(node):
+    if isinstance(node, dict):
+        return {
+            key: _strip_descriptions(value)
+            for key, value in node.items()
+            if key not in ("description", "title")
+        }
+    if isinstance(node, list):
+        return [_strip_descriptions(item) for item in node]
+    return node
 
 
 def default_system_prompt() -> str:
@@ -234,7 +261,7 @@ class LlmPolicy:
                 for item in history
             ],
             "legal_actions": {
-                operator_id: self.registry.get(operator_id).params.model_json_schema()
+                operator_id: _field_only_schema(self.registry.get(operator_id).params)
                 for operator_id in legal
             },
             "budget_left": {

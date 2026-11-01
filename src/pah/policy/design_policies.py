@@ -155,11 +155,24 @@ DEFAULT_LADDER: dict[str, tuple[str, ...]] = {
     CODE_EXCESSIVE_CLEARANCE: ("set_clearance", "resize_insert"),
     CODE_GEOMETRIC_INTERFERENCE: ("resize_insert", "shift_part"),
     CODE_INSERTION_PATH_BLOCKED: ("resize_feature", "rotate_part", "shift_part"),
+    # A hollow part is not a number problem: every interface parameter is right and
+    # the part is still a shell. The only action that can help is asking the
+    # generator again with a material instruction, which is what the operator's
+    # `prompt_hint` carries (measured: generated pin at 29 % of the designed volume).
+    "insufficient_material": ("regenerate_interface",),
+    "excess_material": ("regenerate_interface",),
     "below_min_wall": (),
     "unsupported_overhang": (),
     CODE_JOINT_UNSTABLE: (),
     CODE_DYNAMIC_PENETRATION: (),
 }
+
+#: The material instruction a regeneration carries when the part came back hollow.
+#: A sentence, not a parameter: no number in the spec was wrong.
+MATERIAL_PROMPT_HINT = (
+    "make it a SOLID part: no hollow shell, no inner cavity, no lattice, no ribs "
+    "thinner than 1.5 mm"
+)
 
 #: Appended to every row. `switch_connector` first because a paradigm change is
 #: the only remaining move whose effect can be predicted without a physics model;
@@ -391,7 +404,18 @@ def _switch_connector(spec: DesignSpec, _cert: FailureCertificate) -> list[dict]
     return [_interface_params(spec, kind=kind, params={})]
 
 
-def _regenerate_interface(spec: DesignSpec, _cert: FailureCertificate) -> list[dict]:
+def _regenerate_interface(spec: DesignSpec, cert: FailureCertificate) -> list[dict]:
+    # Material codes are not a number problem: every interface parameter is right and
+    # the part is still a shell. The only action that can help is asking the generator
+    # again with a material instruction, carried by the operator's `prompt_hint`.
+    if cert.code in ("insufficient_material", "excess_material"):
+        return [
+            _interface_params(
+                spec,
+                params={},
+                prompt_hint=MATERIAL_PROMPT_HINT,
+            )
+        ]
     kind = spec.interface.kind
     if not expressible(kind, "set_clearance"):
         return []

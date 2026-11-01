@@ -216,6 +216,12 @@ def _prompt_for(spec: DesignSpec) -> str:
         "snap_fit": "a cantilever snap hook with a rounded lead-in",
         "dovetail": "a dovetail tongue with a small handle block",
     }.get(kind, "a mechanical insert")
+    # A decision (rule or LLM) can send a material instruction through the design's
+    # provenance — this is the one channel by which an agent guides the generator
+    # without ever touching geometry. Measured reason: the first generated pin was a
+    # hollow tube, and no numeric parameter was wrong.
+    hint = str((spec.provenance or {}).get("prompt_hint") or "").strip()
+    hint_clause = f" {hint}." if hint else ""
     return (
         f"a single 3D printable mechanical part: {shape}. "
         f"Purpose: {spec.requirement or 'join two parts'}. "
@@ -228,6 +234,7 @@ def _prompt_for(spec: DesignSpec) -> str:
         # (`_fit_to_interface`), so say so here instead of pretending.
         "Ignore any numeric tolerances in that description: the mating fit is "
         "applied after generation, so only the overall shape matters."
+        f"{hint_clause}"
     )
 
 
