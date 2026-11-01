@@ -199,21 +199,26 @@ pah run --spec fixtures\design\demo-peg-hole-interfere.json --policy rule --roun
 
 **3.5）「接的是不是 2.5」——两层选择，别混**
 
-| 层 | 选什么 | 怎么设 | 取值 |
+| 层 | 选什么 | 怎么设 | 实测取值 |
 |---|---|---|---|
-| 档位 | 调哪组 action | `.env` 的 `HUNYUAN3D_TIER` | `standard`（默认）/ `rapid`（极速）/ `pro`（最高精度、PBR、多视角） |
-| 版本 | 请求里的 `Model` 参数 | `.env` 的 `HUNYUAN3D_MODEL` | `HY-3D-2.5` / `HY-3D-3.0` / `HY-3D-3.1` 等，**以你开通后接口返回的取值为准** |
+| 档位 | 调哪组 action | `.env` 的 `HUNYUAN3D_TIER` | `rapid`（极速）/ `pro`（专业）——SDK 里只有这两组，`SubmitHunyuanTo3DJob` 不存在 |
+| 版本 | 请求里的 `Model` 参数 | `.env` 的 `HUNYUAN3D_MODEL` | **rapid 接受 `HY-3D-2.5`；pro 只接受 `[3.0, 3.1]`**（写 2.5 会被参数校验拒掉） |
 
-不设 `HUNYUAN3D_MODEL` = 用服务默认版本——那篇报告就不能声称「用的是 2.5」。
-要锁定就在 `.env` 里写：
+实测：`rapid + HY-3D-2.5` 可用；`pro + HY-3D-2.5` 返回
+`InvalidParameterValue.InvalidResultFormat: 不在支持的模型版本列表[3.0, 3.1]内`。
+所以要 2.5 就用 rapid；要专业版就用 3.0/3.1。
 
-```ini
-HUNYUAN3D_MODEL=HY-3D-2.5
-HUNYUAN3D_TIER=pro
-```
+**3.6）生成结果会被适配器归一化（实测数据）**
 
-`python examples\hunyuan3d_materializer.py --check` 会把 tier / model / action 三行打出来，
-一眼确认你接的到底是哪一层。
+| 步 | 生成器的原始输出 | 归一化后 |
+|---|---|---|
+| 水密 | 50 043 面、72 个连通块、开放壳 | 体积素重建 → 水密 |
+| 朝向 | 长轴沿 Y 横躺 | 主轴对齐 +Z |
+| 直径 | 0.34 任意单位 | **Ø9.70 mm**（按 `d_peg_mm`） |
+| 长度 | 33 mm（超出设计） | 裁到设计包络 **14 mm** |
+| 就位 | — | 销底与孔底重合，误差 0 |
+
+`--check` 会把 tier / model / action 三行打出来，一眼确认你接的到底是哪一层。
 
 `--check` 在没填 key 时会明确报 `TENCENTCLOUD_SECRET_ID is not set`，填完变 0 problem。
 

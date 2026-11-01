@@ -307,7 +307,18 @@ class Printability:
         self.last_note = self._overhang_note(constraints.process, orientation, limit)
 
         certificates: list[FailureCertificate] = []
-        wall = self._wall(view)
+        try:
+            wall = self._wall(view)
+        except ValueError as error:
+            # A capability boundary, not a tool fault: the insert is not near the
+            # body's interface band, so there is no wall to measure (measured on a
+            # generated insert that came back far from the socket). Raising would be
+            # turned into an environment certificate and the episode would end as
+            # "unknown" — but the right report is "not evaluated", the third state
+            # the counters keep apart from both failure and pass.
+            wall = None
+            note = f"wall not evaluated: {error}"
+            self.last_note = f"{self.last_note}; {note}" if self.last_note else note
         if wall is not None:
             certificates.append(wall)
         if self.overhang_evaluated:

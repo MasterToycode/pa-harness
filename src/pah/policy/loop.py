@@ -525,6 +525,13 @@ class RepairLoop:
                     observed_by="repair_loop",
                 )
             ]
+        # An environment-family certificate means a tool could not answer even when no
+        # exception escaped — a cascade is allowed to catch per-verifier failures
+        # itself (measured: a printability check that could not locate the interface
+        # band). Unknown must never read as a pass, so it demotes the whole
+        # verification here rather than only removing itself from the hard failures.
+        if any(cert.family == "environment" for cert in certs):
+            verified = False
         self._emit(
             "verify",
             ticket=ticket_id,
@@ -562,6 +569,13 @@ class RepairLoop:
         cost: Cost,
         used: BudgetUsed,
     ) -> EpisodeResult:
+        # Verification that no round ever paid for still happened: a clean design is
+        # judged once and the episode ends with zero rounds, so without this the most
+        # common successful episode would report zero geometric work.
+        spent = _cost_between(self._charged, self._meter_now())
+        self._charged = self._meter_now()
+        total = _add_cost(_add_cost(cost, self._pending), spent)
+        self._pending = Cost()
         outcome = {
             "repaired": "repaired",
             "exhausted": "exhausted",
@@ -585,7 +599,7 @@ class RepairLoop:
             rounds=used.rounds,
             assembly=assembly,
             certificates=tuple(certs),
-            cost=cost,
+            cost=total,
         )
 
     def _emit(self, kind: str, **fields: object) -> None:

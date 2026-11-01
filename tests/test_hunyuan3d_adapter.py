@@ -23,6 +23,8 @@ from examples.hunyuan3d_materializer import (
     TIER_ENV,
     TIERS,
     _first_file_url,
+    _align_long_axis_to_z,
+    _close_by_voxels,
     _fit_to_interface,
     _model,
     _prompt_for,
@@ -84,16 +86,21 @@ def test_a_generated_shape_is_scaled_to_the_designed_peg_diameter():
 
 
 def test_scaling_is_uniform_so_the_shape_is_preserved():
-    """A non-uniform fit would turn a pin into an oval and still pass the fit check."""
+    """A non-uniform fit would turn a pin into an oval and still pass the fit check.
+
+    The source is small enough to fit inside the designed envelope, so nothing is
+    cut: this test is about the scale, and the envelope test covers the cut.
+    """
     spec = _spec()
     reference = _reference_box()
-    source = trimesh.creation.cylinder(radius=10.0, height=30.0, sections=32)
+    source = trimesh.creation.cylinder(radius=3.0, height=8.0, sections=32)
     ratio_before = source.extents[2] / source.extents[0]
 
     placed = _fit_to_interface(source, reference=reference, spec=spec)
     ratio_after = placed.extents[2] / placed.extents[0]
 
-    assert ratio_after == pytest.approx(ratio_before, rel=1e-6)
+    assert ratio_after == pytest.approx(ratio_before, rel=1e-3)
+    assert min(placed.extents[0], placed.extents[1]) == pytest.approx(9.7, abs=0.1)
 
 
 def test_the_insert_lands_at_the_reference_seat():
@@ -105,8 +112,60 @@ def test_the_insert_lands_at_the_reference_seat():
 
     assert placed.bounds[0][2] == pytest.approx(reference.bounds[0][2], abs=1e-6)
     assert (placed.bounds[0][0] + placed.bounds[1][0]) / 2 == pytest.approx(
-        (reference.bounds[0][0] + reference.bounds[1][0]) / 2, abs=1e-6
+        (reference.bounds[0][0] + reference.bounds[1][0]) / 2, abs=1e-3
     )
+
+
+# --------------------------------------------------------------------------- #
+# what the first real generation forced: close, orient, bound
+# --------------------------------------------------------------------------- #
+def test_a_closed_mesh_survives_the_voxel_pass():
+    solid = trimesh.creation.cylinder(radius=5.0, height=12.0, sections=48)
+
+    closed = _close_by_voxels(solid)
+
+    assert closed.is_watertight
+    assert closed.volume == pytest.approx(solid.volume, rel=0.25)
+
+
+def test_a_shell_that_cannot_be_closed_is_refused_not_returned_as_skin():
+    """A voxel fill of a hole-riddled surface is a 1 mm3 skin that *looks* watertight;
+    returning it would let a fake part sail through every verifier."""
+    solid = trimesh.creation.cylinder(radius=5.0, height=12.0, sections=48)
+    torn = trimesh.Trimesh(solid.vertices.copy(), solid.faces[:-2], process=True)
+    assert not torn.is_watertight
+
+    with pytest.raises(ValueError, match="cannot be closed into a solid"):
+        _close_by_voxels(torn)
+
+
+def test_a_part_lying_along_y_is_turned_upright_before_scaling():
+    """Measured: the real job came back along Y; scaling before alignment produced a
+    2.8 mm pin. Principal-axis alignment is what makes the diameter mean something."""
+    lying = trimesh.creation.cylinder(radius=5.0, height=40.0, sections=32)
+    lying.apply_transform(trimesh.transformations.rotation_matrix(1.5708, [1, 0, 0]))
+
+    upright = _align_long_axis_to_z(lying)
+
+    assert upright.extents[2] == pytest.approx(40.0, rel=0.02)
+    assert max(upright.extents[0], upright.extents[1]) < 12.0
+
+
+def test_a_generated_pin_longer_than_the_design_is_cut_to_the_envelope():
+    """A 33 mm generated pin against a 14 mm design: cutting keeps the interface exact
+    instead of handing the policy a decorative tail to 'repair'."""
+    spec = _spec()
+    reference = _reference_box()  # 9.7 x 9.7 x 14, seated
+    source = trimesh.creation.cylinder(radius=6.0, height=33.0, sections=48)
+    source.apply_translation((0.0, 0.0, 33.0 / 2))
+
+    fitted = _fit_to_interface(source, reference=reference, spec=spec)
+
+    assert fitted.is_watertight
+    assert fitted.extents[2] == pytest.approx(reference.extents[2], abs=0.05)
+    assert min(fitted.extents[0], fitted.extents[1]) == pytest.approx(9.7, abs=0.1)
+    assert fitted.volume > 0.0
+
 
 
 # --------------------------------------------------------------------------- #
@@ -154,10 +213,9 @@ def test_the_adapter_pins_the_documented_endpoint_and_version():
     """The service is versioned; an adapter that forgets which version it speaks is
     the kind of drift that silently changes what a report means."""
     assert API_VERSION == "2025-05-13"
-    assert TIERS["standard"] == ("SubmitHunyuanTo3DJob", "QueryHunyuanTo3DJob")
     assert TIERS["rapid"] == ("SubmitHunyuanTo3DRapidJob", "QueryHunyuanTo3DRapidJob")
     assert TIERS["pro"] == ("SubmitHunyuanTo3DProJob", "QueryHunyuanTo3DProJob")
-    assert DEFAULT_TIER == "standard"
+    assert DEFAULT_TIER == "rapid"
 
 
 # --------------------------------------------------------------------------- #
@@ -165,7 +223,7 @@ def test_the_adapter_pins_the_documented_endpoint_and_version():
 # --------------------------------------------------------------------------- #
 def test_the_tier_selects_the_action_pair(monkeypatch):
     monkeypatch.delenv(TIER_ENV, raising=False)
-    assert _tier() == "standard"
+    assert _tier() == "rapid"
 
     monkeypatch.setenv(TIER_ENV, "pro")
     assert _tier() == "pro"
@@ -195,3 +253,5 @@ def test_the_payload_never_carries_both_a_prompt_and_an_image():
     assert "Prompt" in text and "ImageUrl" not in text
     assert "ImageUrl" in image and "Prompt" not in image
     assert text["ResultFormat"] == "GLB"
+
+

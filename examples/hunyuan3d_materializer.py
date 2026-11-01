@@ -50,6 +50,7 @@ import time
 import urllib.request
 from pathlib import Path
 
+import numpy as np
 import trimesh
 
 REPO = Path(__file__).resolve().parents[1]
@@ -99,16 +100,15 @@ SECRET_KEY_ENV = "TENCENTCLOUD_SECRET_KEY"
 REGION_ENV = "TENCENTCLOUD_REGION"
 DEFAULT_REGION = "ap-guangzhou"
 
-#: 提交/查询用的动作名。腾讯云按档位拆了三组动作，**模型版本再通过请求里的
-#: `Model` 参数选**（`HY-3D-2.5` / `HY-3D-3.0` / `HY-3D-3.1` / `HY-3D-Express`，
-#: 以控制台开通后接口返回的取值为准）。所以「接的是不是 2.5」由这两层共同决定：
-#: 档位选 action，版本选 Model。
+#: 提交/查询用的动作名。SDK 里真实存在的只有两组（没有 `SubmitHunyuanTo3DJob`，
+#: 那是按文档猜的、会被 SDK 拒绝）：极速版 `...RapidJob` 与专业版 `...ProJob`。
+#: 模型版本再通过请求里的 `Model` 参数选——**每个档位支持的版本不同**，例如专业版
+#: 只接受 `[3.0, 3.1]`，写 2.5 会被参数校验拒掉（`InvalidResultFormat`）。
 TIERS: dict[str, tuple[str, str]] = {
-    "standard": ("SubmitHunyuanTo3DJob", "QueryHunyuanTo3DJob"),
     "rapid": ("SubmitHunyuanTo3DRapidJob", "QueryHunyuanTo3DRapidJob"),
     "pro": ("SubmitHunyuanTo3DProJob", "QueryHunyuanTo3DProJob"),
 }
-DEFAULT_TIER = "standard"
+DEFAULT_TIER = "rapid"
 TIER_ENV = "HUNYUAN3D_TIER"
 MODEL_ENV = "HUNYUAN3D_MODEL"
 API_VERSION = "2025-05-13"
@@ -354,7 +354,7 @@ def _first_file_url(payload: dict) -> str:
 
 
 def _load_mesh(url: str) -> trimesh.Trimesh:
-    """Download and read whatever 3D format came back, then try to close it."""
+    """Download and read whatever 3D format came back, then close it."""
     with urllib.request.urlopen(url, timeout=120) as response:
         data = response.read()
     with tempfile.NamedTemporaryFile(suffix=_suffix_of(url), delete=False) as handle:
@@ -367,6 +367,9 @@ def _load_mesh(url: str) -> trimesh.Trimesh:
     if isinstance(loaded, trimesh.Scene):
         loaded = trimesh.util.concatenate(tuple(loaded.geometry.values()))
     mesh = loaded
+    mesh.merge_vertices()
+    mesh.update_faces(mesh.nondegenerate_faces())
+    mesh.remove_unreferenced_vertices()
     if not mesh.is_watertight:
         trimesh.repair.fill_holes(mesh)
         trimesh.repair.fix_normals(mesh)
@@ -374,6 +377,7 @@ def _load_mesh(url: str) -> trimesh.Trimesh:
 
 
 def _suffix_of(url: str) -> str:
+    """The file extension the download URL implies, so the loader picks a parser."""
     clean = url.split("?")[0].lower()
     for suffix in (".glb", ".gltf", ".obj", ".stl", ".fbx", ".usdz"):
         if clean.endswith(suffix):
@@ -381,48 +385,135 @@ def _suffix_of(url: str) -> str:
     return ".glb"
 
 
-# --------------------------------------------------------------------------- #
-# making a generated shape into a part with the *designed* interface
-# --------------------------------------------------------------------------- #
+def _close_by_voxels(mesh: trimesh.Trimesh, *, samples: int = 120) -> trimesh.Trimesh:
+    """Voxel-remesh an open shell into a watertight solid.
+
+    Generative meshes come back as open shells (measured on the first real job:
+    50 043 faces, 72 disconnected components, volume 0.045 of the bounding box). A
+    verifier cannot measure a shell — no closed interior means no interference
+    volume and no penetration — so the adapter has to close it before the harness
+    sees it. Voxelise → fill → marching cubes is the cheapest operation that always
+    answers with a manifold, at the cost of losing sharp detail below one voxel.
+
+    `samples` is per *longest* side: 120 keeps a part of 0.35 units at ~0.003 units
+    per voxel, which measured out to a 27 k-face insert — detailed enough for the
+    geometry checks and cheap enough to rebuild every round.
+    """
+    extent = float(max(mesh.extents))
+    if extent <= 0.0:
+        raise ValueError("generated mesh has zero extent and cannot be closed")
+    pitch = extent / float(samples)
+    grid = mesh.voxelized(pitch=pitch).fill()
+    closed = grid.marching_cubes
+    if closed is None or len(closed.faces) == 0:
+        raise ValueError("voxel remesh produced no surface; the model output is unusable")
+    closed.apply_scale(pitch)
+    closed.merge_vertices()
+    trimesh.repair.fix_normals(closed)
+
+    # A voxel fill of a surface with small holes produces a solid; of a shell missing
+    # whole caps it produces a thin skin instead, which *looks* watertight and would
+    # sail through every verifier with a 1 mm3 "part". Measured: the real Hunyuan
+    # output closed to 27% of its convex hull (a tapered pin, plausible), while a
+    # cylinder with two faces torn out closed to 7% (a skin). The ratio is the only
+    # cheap way to tell those apart.
+    hull_volume = float(mesh.convex_hull.volume)
+    ratio = float(closed.volume) / hull_volume if hull_volume > 0.0 else 0.0
+    if ratio < 0.25:
+        raise ValueError(
+            "generated mesh cannot be closed into a solid: voxel closing produced a "
+            f"shell ({ratio:.0%} of its convex hull). The model output is missing too "
+            "much surface; try a plainer prompt, or repair it with an external "
+            "remesher before handing it to the harness."
+        )
+    return closed
+
+
+def _align_long_axis_to_z(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
+    """Rotate the part so its longest direction is +Z, cross-section in XY.
+
+    Generative models do not respect a requested orientation: the first real job
+    came back lying along Y, so "scale the cross-section to the peg diameter" would
+    have scaled the *length* and produced a 2.8 mm pin. Principal-axis alignment is
+    the cheapest way to make the part's own frame agree with the insert's.
+    """
+    vertices = mesh.vertices - mesh.centroid
+    if len(vertices) < 4:
+        return mesh.copy()
+    values, vectors = np.linalg.eigh(np.cov(vertices.T))
+    order = np.argsort(values)
+    z_axis = vectors[:, order[-1]]
+    x_axis = vectors[:, order[-2]]
+    y_axis = np.cross(z_axis, x_axis)
+    # Rows, not columns: a point is re-expressed in the new basis as `R @ v`, so the
+    # long-axis vector must be the *third row* to land on +Z. Written as columns it
+    # maps the long axis onto a radial direction instead (measured: a 40 mm pin
+    # lying along Y came back 40 mm along X).
+    rotation = np.vstack([x_axis, y_axis, z_axis])
+    if np.linalg.det(rotation) < 0.0:
+        rotation[1] *= -1.0
+    transform = np.block([[rotation, np.zeros((3, 1))], [np.zeros((1, 3)), 1.0]])
+    aligned = mesh.copy()
+    aligned.apply_transform(transform)
+    return aligned
+
+
 def _fit_to_interface(
     generated: trimesh.Trimesh, *, reference: trimesh.Trimesh, spec: DesignSpec
 ) -> trimesh.Trimesh:
-    """Uniform-scale to the designed peg diameter, then seat it like the reference.
+    """Close, orient, scale to the designed diameter, seat, and bound to the envelope.
 
-    Two constraints, in this order:
+    Four steps, and each one exists because the first real generation failed without it:
 
-    * **interface size comes from the spec**, never from the model: a generated pin
-      is scaled *uniformly* so its largest cross-section equals `d_peg_mm`. Uniform
-      matters — a non-uniform fit would turn a pin into an oval and pass the fit
-      verifier while being unmanufacturable.
-    * **pose comes from the reference**: the parametric insert already sits at the
-      seated pose, so we align XY centrelines and the lowest Z, which is the same
-      `place_like` convention the template documents.
-
-    Everything else about the shape is the model's; that is the point of using it.
+    1. **close** — a generative mesh is an open shell; nothing downstream can measure it;
+    2. **orient** — the part comes back lying along whatever axis its own frame used
+       (measured: along Y), so scaling before alignment distorts it;
+    3. **scale uniformly** so the *smaller* cross-section extent equals `d_peg_mm` —
+       the smaller one is the shank, the larger one is whatever detail the model added,
+       and scaling the larger would make the shank undersized (a loose fit) while
+       scaling the length would make it a 2.8 mm pin;
+    4. **bound to the designed insert envelope** — a generated pin measured 33 mm
+       long against a 14 mm design; cutting it to the envelope keeps the interface
+       exact and stops a decorative tail from becoming an interference the policy
+       would then try to "repair".
     """
     mesh = generated.copy()
+    if not mesh.is_watertight:
+        mesh = _close_by_voxels(mesh)
+    mesh = _align_long_axis_to_z(mesh)
     mesh.apply_translation(-mesh.bounds.mean(axis=0))
 
     params = spec.interface.validated_params()
     target_d = float(getattr(params, "d_peg_mm", 0.0) or 0.0)
-    if target_d > 0.0:
-        extents = mesh.bounds[1] - mesh.bounds[0]
-        current_d = float(max(extents[0], extents[1]))
-        if current_d > 1e-9:
-            mesh.apply_scale(target_d / current_d)
+    if target_d <= 0.0:
+        target_d = float(min(reference.extents[0], reference.extents[1]))
+    shank = float(min(mesh.extents[0], mesh.extents[1]))
+    if shank > 1e-9:
+        mesh.apply_scale(target_d / shank)
 
-    placed = mesh.copy()
     target = reference.bounds
-    current = placed.bounds
-    placed.apply_translation(
+    current = mesh.bounds
+    mesh.apply_translation(
         [
             (target[0][0] + target[1][0]) / 2 - (current[0][0] + current[1][0]) / 2,
             (target[0][1] + target[1][1]) / 2 - (current[0][1] + current[1][1]) / 2,
             target[0][2] - current[0][2],
         ]
     )
-    return placed
+
+    oversized = any(
+        mesh.extents[i] > reference.extents[i] + 1e-6 for i in range(3)
+    )
+    if oversized:
+        envelope = trimesh.creation.box(extents=reference.extents)
+        envelope.apply_translation(reference.bounds.mean(axis=0))
+        try:
+            cut = trimesh.boolean.intersection([mesh, envelope], engine="manifold")
+        except Exception:  # noqa: BLE001 - a boolean failure falls back to the uncut shape
+            cut = None
+        if cut is not None and cut.is_watertight and float(cut.volume) > 0.0:
+            mesh = cut
+    return mesh
 
 
 # --------------------------------------------------------------------------- #
@@ -485,3 +576,4 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
+
