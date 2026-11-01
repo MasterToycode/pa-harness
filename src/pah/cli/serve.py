@@ -36,7 +36,7 @@ EXIT_CRASH = 3
 #: Shown in the page header. A server holds its module in memory, so a code change
 #: needs a restart before the browser can see it; this marker is how a user tells a
 #: fresh page from a stale one without reading the source.
-PAGE_VERSION = "2026-11-01c"
+PAGE_VERSION = "2026-11-01d"
 
 KINDS = ("peg_hole", "snap_fit", "dovetail")
 POLICIES = ("rule", "random", "llm")
@@ -150,7 +150,7 @@ _PAGE = """<!doctype html>
       font-weight:600; cursor:pointer; }}
   button:disabled {{ opacity:.55; cursor:progress; }}
   #stop {{ border-color:#a35a3a; background:#5a2f1e; color:#ffe0cf; margin-top:8px; }}
-  #stop[hidden] {{ display:none; }}
+  #stop:disabled {{ opacity:.45; cursor:not-allowed; background:#2a1f1a; border-color:#5a3a2a; }}
   #status {{ font-size:12px; color:#8ba0b5; margin-top:10px; min-height:16px; }}
   #log {{ margin-top:12px; background:#0b1017; border:1px solid #1d2836; border-radius:8px;
       padding:10px; font-family: ui-monospace, Consolas, monospace; font-size:11.5px;
@@ -189,7 +189,11 @@ _PAGE = """<!doctype html>
         <input id="config" placeholder="（默认 ./pah.toml）" value="{config}"></div>
     </div>
     <button id="go">开始生成</button>
-    <button id="stop" hidden>停止（不再开始新的轮次）</button>
+    <!-- Always visible. A control that only exists during an invisible state is
+         undiscoverable: the user looked for it while idle and concluded the feature
+         was missing. Idle means disabled, with the reason in the label. -->
+    <button id="stop" disabled title="停止后不会开始新的轮次；已提交的生成仍会计费">
+      停止（空闲时不可用）</button>
     <div id="status">就绪</div>
     <div id="log" hidden></div>
     <div class="note">每轮会调用一次生成服务（混元）。一次 build 最多 <b>1 + 轮数</b> 次生成：
@@ -228,13 +232,15 @@ function poll() {{
     // refreshing (or reopening the page later) still shows the part you just built.
     if (s.result) renderResult(s.result);
     if (s.state === "running") {{
-      $("stop").hidden = false;
       $("stop").disabled = !!s.cancelling;
-      $("stop").textContent = s.cancelling ? "正在停止…" : "停止（不再开始新的轮次）";
+      $("stop").textContent = s.cancelling
+        ? "正在停止…（等当前生成返回）"
+        : "停止（不再开始新的轮次）";
       timer = setTimeout(poll, 1000);
       return;
     }}
-    $("stop").hidden = true;
+    $("stop").disabled = true;
+    $("stop").textContent = "停止（空闲时不可用）";
     $("go").disabled = false;
   }});
 }}

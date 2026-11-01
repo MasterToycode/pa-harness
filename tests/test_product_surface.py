@@ -115,10 +115,14 @@ def test_the_page_serves_a_form_and_serves_only_inside_the_workdir(tmp_path, mon
         assert 'id="prompt"' in page and 'id="go"' in page
         # The stop button and its wiring must be in the served page: a user running a
         # server started before the change cannot see the button, and that looked like
-        # "the feature is missing" rather than "restart the server".
+        # "the feature is missing" rather than "restart the server". It is always
+        # rendered and disabled when idle — a control that only exists during an
+        # invisible state is undiscoverable (the user looked for it while idle).
         assert 'id="stop"' in page
+        assert 'id="stop" hidden' not in page
+        assert 'id="stop" disabled' in page
         assert "/cancel" in page
-        assert "2026-11-01c" in page  # page version marker, so staleness is visible
+        assert "2026-11-01d" in page  # page version marker, so staleness is visible
 
         with urllib.request.urlopen(f"{base}/status", timeout=5) as response:
             status = json.loads(response.read())
