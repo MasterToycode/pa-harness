@@ -172,7 +172,48 @@ pah run --spec fixtures/design/demo-peg-hole-clear.json --policy rule --rounds 3
 `--selftest` 通过但 `doctor --call` 失败，问题一定在 `generate_insert` 或 import，不在 harness。
 两者都过之后，`pah run` 走的就是你的模型（report 的 `geometry.parts[*].hash` 会变）。
 
-### 2.5 本地 torch 模型注意三件事
+### 2.5 具体到混元生 3D（腾讯云）：它不是一个 key
+
+腾讯云用的是 **SecretId + SecretKey** 两把，走 TC3 签名，域名 `ai3d.tencentcloudapi.com`，
+版本 `2025-05-13`，流程是 **Submit → Query 轮询 → 下载文件**（[接口文档](https://cloud.tencent.cn/document/api/1804/123447)）。
+适配器我已经写好：`examples/hunyuan3d_materializer.py`。
+
+**1）拿钥匙**：腾讯云控制台 → 访问管理 CAM → API 密钥管理 → 新建密钥（得到 SecretId / SecretKey）；
+再到 [混元生3D 控制台](https://console.cloud.tencent.com/ai3d) 开通服务（按任务计费）。
+
+**2）写进 `.env`**（pah 启动时自动读）：
+
+```ini
+TENCENTCLOUD_SECRET_ID=AKID...
+TENCENTCLOUD_SECRET_KEY=...
+TENCENTCLOUD_REGION=ap-guangzhou
+```
+
+**3）三步验证（第 1 步不花钱）**：
+
+```powershell
+python examples\hunyuan3d_materializer.py --check        # SDK + 两把 key 就绪？不调用服务
+pah providers doctor --role gen --call                   # 真生成一次（会花一个任务的费用）
+pah run --spec fixtures\design\demo-peg-hole-interfere.json --policy rule --rounds 3 --out runs/hunyuan
+```
+
+`--check` 在没填 key 时会明确报 `TENCENTCLOUD_SECRET_ID is not set`，填完变 0 problem。
+
+**4）`pah.toml` 指过去**：
+
+```toml
+[gen]
+default = "hunyuan"
+[gen.providers.hunyuan]
+kind = "python"
+compat = { target = "examples/hunyuan3d_materializer.py:materialize" }
+```
+
+**两条口径**（适配器里写死了，不是建议）：
+- **接口尺寸由 spec 决定，不由模型决定**：模型只生成 insert 的自由形状，按 `d_peg_mm` **等比**缩放到配合尺寸，再对齐 seated pose。非等比缩放会把销子压扁、骗过间隙验证器。
+- **没有 key 就抛错**，绝不退回参数化几何——`report.run.generator` 写的是 `hunyuan:python`，偷偷换实现就等于伪造实验条件。
+
+### 2.6 本地 torch 模型注意三件事
 
 1. **模块级缓存模型**，别每次 `materialize` 都加载（一次 episode 会物化多轮）；
 2. 设备/权重路径从环境变量读（`DIT_MODEL`、`DIT_DEVICE=cuda`），不要让代码里写死；

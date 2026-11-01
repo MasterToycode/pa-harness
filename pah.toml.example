@@ -41,3 +41,8 @@ kind = "local-parametric"
 # `api_version = "1"`。新增模块（DiT 适配器、case memory、自我迭代机制）不需要改内核。
 # [plugins]
 # modules = ["mypkg.dit_adapter", "mypkg.case_memory"]
+
+# 混元生3D（腾讯云）：SecretId + SecretKey 放 .env，不在这里。
+# [gen.providers.hunyuan]
+# kind = "python"
+# compat = { target = "examples/hunyuan3d_materializer.py:materialize" }
