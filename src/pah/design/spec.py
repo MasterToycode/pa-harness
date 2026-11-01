@@ -345,13 +345,31 @@ class DesignSpec(_Frozen):
     def with_interface(
         self, *, kind: str | None = None, params: dict | None = None
     ) -> DesignSpec:
-        """A new revision with the interface's kind and/or parameters replaced."""
+        """A new revision with the interface's kind and/or parameters replaced.
+
+        Two different operations, because they have two different meanings:
+
+        * **same kind** — `params` are merged into the current ones, which is what
+          a repair operator wants ("change `d_hole_mm`, leave the rest alone");
+        * **kind change** — `params` replace the old set wholesale, because the old
+          keys belong to the old kind's vocabulary and its `extra="forbid"` model
+          would reject them. Switching kind without supplying the new kind's
+          parameters is a `ValueError`, not a silent half-migration: a dovetail
+          described by peg diameters is a spec nobody can materialise.
+        """
         current = self.interface
-        merged = dict(current.params)
-        merged.update(params or {})
-        replacement = current.model_copy(
-            update={"kind": kind if kind is not None else current.kind, "params": merged}
-        )
+        new_kind = kind if kind is not None else current.kind
+        if new_kind != current.kind:
+            if not params:
+                raise ValueError(
+                    f"switching interface {current.id!r} from {current.kind!r} to "
+                    f"{new_kind!r} needs that kind's parameters; the old ones "
+                    f"({sorted(current.params)}) do not describe it"
+                )
+            payload = dict(params)
+        else:
+            payload = {**current.params, **(params or {})}
+        replacement = current.model_copy(update={"kind": new_kind, "params": payload})
         return self.edit(interfaces=(replacement,))
 
     def with_parts(self, *parts: PartSpec) -> DesignSpec:

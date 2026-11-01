@@ -80,6 +80,18 @@ spec_of(assembly) -> DesignSpec
 
 **算子是纯的**：`Operator.apply(asm, plan) -> Assembly` 只改 spec（写进 `assembly.constraints["design_spec"]`），用 `assembly_from_spec(..., parent=旧id, version+1)` 造新版本，**不写盘、不建几何**。物化发生在级联适配器（`DesignVerifierCascade`）第一次看到 `geom.path` 为空时——验证器不许自己造几何，但"把 spec 变成可看的三角形"是适配器的职责，不是验证器的判断。
 
+### 2.1 几何约定 v2.0（2026-11-01 定，三种 kind 共用）
+
+| 约定 | 值 | 为什么 |
+|---|---|---|
+| 单位 / 坐标系 | mm，world frame（已应用 `pose_mm` / `rot_deg`） | 验证器与物理都按世界坐标量 |
+| `spec.insert.pose_mm` | **seated（完全插入）姿态** | 路径验证器只需沿 mate_axis 往回抬 `approach_mm` |
+| peg_hole 孔型 | **盲孔 socket，孔深 = `engage_mm`** | 通孔 + 无销头在重力下必掉（物理档实测），演示无意义；带销头/通孔的变体留给未来的 `peg_hole_through` 新 kind |
+| seated 接触 | 销底贴孔底 = **贴面接触**，布尔交体积 0 | 干涉验证器不得对贴面误报（阈值 1e-3 mm³ 吸收浮点噪声） |
+| snap_fit / dovetail 的 mate_axis | snap_fit `(0,0,1)`；dovetail `(1,0,0)`（滑入） | 路径与物理都读 `ConnectorGeometry.mate_axis` |
+| 实体要求 | 两个网格 `is_watertight` 且体积 > 0 | 布尔与物理的前置条件 |
+| 物化幂等 | 同 spec 同 out_dir 二次调用覆盖写、hash 不变 | 恢复/重试会重复调用 |
+
 **顺带被继承、不许改的行为**：`Assembly` 是指数，`RepairLoop`（`policy/loop.py`）不用改——它只认 `LoopEngine/LoopVerifiers/LoopRegistry/LoopPolicy` 四个 Protocol，v2 全部满足。
 
 ---
