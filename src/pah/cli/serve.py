@@ -33,6 +33,11 @@ from pathlib import Path
 EXIT_OK = 0
 EXIT_CRASH = 3
 
+#: Shown in the page header. A server holds its module in memory, so a code change
+#: needs a restart before the browser can see it; this marker is how a user tells a
+#: fresh page from a stale one without reading the source.
+PAGE_VERSION = "2026-11-01c"
+
 KINDS = ("peg_hole", "snap_fit", "dovetail")
 POLICIES = ("rule", "random", "llm")
 
@@ -164,6 +169,7 @@ _PAGE = """<!doctype html>
 <header>
   <h1>PAH · 生成可装配部件</h1>
   <span class="sub">描述你想要的零件 → 模型生成 → 六类验证 → 不合格自动修 → 出图</span>
+  <span class="sub" style="margin-left:auto">页面版本 {version} · 改动后需重启 pah serve</span>
 </header>
 <main>
   <section class="panel">
@@ -304,6 +310,7 @@ class Handler(BaseHTTPRequestHandler):
                 kinds="".join(f'<option value="{k}">{k}</option>' for k in KINDS),
                 policies="".join(f'<option value="{p}">{p}</option>' for p in POLICIES),
                 config="pah.toml",
+                version=PAGE_VERSION,
             )
             self._send(HTTPStatus.OK, page.encode("utf-8"), "text/html; charset=utf-8")
             return

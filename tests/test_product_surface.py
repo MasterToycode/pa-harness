@@ -113,10 +113,21 @@ def test_the_page_serves_a_form_and_serves_only_inside_the_workdir(tmp_path, mon
             page = response.read().decode("utf-8")
         assert response.status == 200
         assert 'id="prompt"' in page and 'id="go"' in page
+        # The stop button and its wiring must be in the served page: a user running a
+        # server started before the change cannot see the button, and that looked like
+        # "the feature is missing" rather than "restart the server".
+        assert 'id="stop"' in page
+        assert "/cancel" in page
+        assert "2026-11-01c" in page  # page version marker, so staleness is visible
 
         with urllib.request.urlopen(f"{base}/status", timeout=5) as response:
             status = json.loads(response.read())
         assert status["state"] == "idle"
+        assert status["cancelling"] is False
+
+        cancel = urllib.request.Request(f"{base}/cancel", data=b"", method="POST")
+        with urllib.request.urlopen(cancel, timeout=5) as response:
+            assert json.loads(response.read())["state"] == "idle"  # nothing running
 
         with urllib.request.urlopen(f"{base}/file?p=ok.txt", timeout=5) as response:
             assert response.read() == b"fine"
