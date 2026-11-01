@@ -210,6 +210,12 @@ def _print_report(report: dict) -> None:
           f"unknown={counts['unknown']}  not_evaluated={counts['not_evaluated']}")
     for verifier_id, reason in report["verifiers"].get("notes", {}).items():
         print(f"  not evaluated {verifier_id}: {reason}")
+    # An environment certificate is the reason an episode ended without a decision
+    # (a refused API, an exhausted quota, a crashed simulator). Its sentence is the
+    # only actionable part of a `failed` episode, so it is printed, not buried.
+    for error in report.get("errors", []):
+        detail = error.get("detail") or "(no detail recorded)"
+        print(f"  FAILED  {error.get('code')}（{error.get('observed_by')}）：{detail[:240]}")
     print(f"  geometry      {report['geometry']['dir']}"
           f"  ({len(report['geometry']['files'])} file(s), "
           f"complete={report['geometry']['complete']})")

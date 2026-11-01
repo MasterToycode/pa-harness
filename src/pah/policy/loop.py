@@ -118,7 +118,7 @@ class EpisodeResult:
     distinct from the ticket's outcome vocabulary."""
 
     ticket_id: str
-    verdict: Literal["repaired", "exhausted", "infeasible", "failed"]
+    verdict: Literal["repaired", "exhausted", "infeasible", "failed", "cancelled"]
     reason: str
     rounds: int
     assembly: Assembly
@@ -244,6 +244,13 @@ class RepairLoop:
     registry: LoopRegistry
     policy: LoopPolicy
     observer: Observer | None = None
+    #: Asked once per iteration, before any work is spent. A cancelled episode ends
+    #: with `verdict="cancelled"` and closes its ticket as `stopped`, which is the
+    #: engine's word for "a person ended this" — see `TicketEnd.outcome`. It cannot
+    #: interrupt a call already in flight (an HTTP generation that has been submitted
+    #: is billed whether or not we wait for it); what it guarantees is that **no new
+    #: round starts** after the request, which is what a mis-click costs.
+    cancel: Callable[[], bool] | None = None
     #: Backstop only; the real ceiling is the mandate's budget.
     max_rounds: int = 32
     _seen: set[str] = field(default_factory=set, init=False, repr=False)
@@ -290,6 +297,10 @@ class RepairLoop:
         self._emit("episode.begin", ticket=ticket.id, policy=self.policy.name, assembly=ticket.id)
 
         while True:
+            if self.cancel is not None and self.cancel():
+                return self._finish(
+                    ticket, "cancelled", "cancelled by request", assembly, certs, total_cost, used
+                )
             certs, verified = self._verified_or_run(assembly, ticket.id, phase="before")
             if not verified:
                 # A verifier that cannot run leaves the state unknown. Unknown is
@@ -581,6 +592,7 @@ class RepairLoop:
             "exhausted": "exhausted",
             "infeasible": "infeasible",
             "failed": "stopped",
+            "cancelled": "stopped",
         }[verdict]
         self.engine.end_ticket(ticket.id, outcome, reason)
         self._emit(

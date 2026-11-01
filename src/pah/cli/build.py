@@ -53,6 +53,7 @@ def execute(
     design: str = "default",
     preview: bool = True,
     progress: Progress | None = None,
+    cancel: Callable[[], bool] | None = None,
 ) -> dict:
     """Run one build and return everything a caller (CLI or page) needs.
 
@@ -120,10 +121,14 @@ def execute(
         seed=seed,
         policy=policy,
         rounds=rounds,
+        cancel=cancel,
     )
     composed = runtime.build(cfg)
     try:
-        note(f"episode: policy={policy} rounds≤{rounds} generator={cfg_generator(cfg)}")
+        note(
+            f"episode: policy={policy} rounds≤{rounds} generator={cfg_generator(cfg)} "
+            f"→ up to {1 + rounds} generation call(s) (1 initial + {rounds} repair)"
+        )
         started = time.perf_counter()
         report = composed.run_episode(
             spec, policy_name=policy, rounds=rounds, out_dir=target, resume=False
@@ -302,6 +307,12 @@ def _print_artifacts(result: dict) -> None:
         print(f"  打印文件 {'已写出 print/（3MF + STL + manifest）' if result['printable'] else '已写出但标记为不可打印'}")
         for problem in result.get("print_problems") or []:
             print(f"    · {problem}")
+    # An environment certificate is the reason an episode ended without a decision.
+    # Printing it here is the difference between "failed" and "the API refused: top up".
+    errors = (result.get("report") or {}).get("errors") or []
+    for error in errors:
+        detail = error.get("detail") or "(no detail recorded)"
+        print(f"  失败原因 · {error.get('code')}（{error.get('observed_by')}）：{detail[:220]}")
     for note in result["notes"]:
         print(f"  未评估 · {note[:120]}")
     print()

@@ -1,0 +1,128 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\build-20261101-235711",
+    "policy": "llm",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.807,
+    "generator": "hunyuan:python"
+  },
+  "ticket": {
+    "id": "b661d2902f58dce736a7f2761c93d58a",
+    "outcome": "stopped",
+    "reason": "verifier could not run"
+  },
+  "episode": {
+    "verdict": "failed",
+    "reason": "verifier could not run",
+    "rounds": 0
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 0,
+      "left": 2
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 0,
+      "left": 16
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 0,
+      "left": 8
+    },
+    "verifier_spend": {
+      "geom_calls": 0,
+      "sim_calls": 0
+    },
+    "rounds_produced": 0,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "design-peg_hole",
+    "kind": "peg_hole",
+    "requirement": "一个实心的圆柱插销，顶部是一个扁平的圆形头部，头部比销身宽，底面有倒角，竖直立在原点，表面光滑连续；不要中空，不要镂空，不要晶格或蜂窝结构，不要底座和支撑结构",
+    "initial_content_key": "sha256:c8fe524709a77ca272543bfcfc8754a2",
+    "final_content_key": "sha256:c8fe524709a77ca272543bfcfc8754a2",
+    "initial_clearance_mm": 0.1,
+    "final_clearance_mm": 0.1,
+    "final_revision": 1,
+    "provenance": {
+      "via": "pah build",
+      "prompt": "一个实心的圆柱插销，顶部是一个扁平的圆形头部，头部比销身宽，底面有倒角，竖直立在原点，表面光滑连续；不要中空，不要镂空，不要晶格或蜂窝结构，不要底座和支撑结构",
+      "pose": "builder:peg_hole.seated_pose_mm",
+      "design": "default"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 0,
+    "physical_failures_final": 0,
+    "final_codes": [
+      "verifier_error"
+    ],
+    "environment_errors": 1,
+    "verifier_error_events": 0,
+    "unknown": 1,
+    "error_rounds": [],
+    "not_evaluated": 0,
+    "not_evaluated_by": []
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {}
+  },
+  "trace": {
+    "path": "runs\\build-20261101-235711\\trace.jsonl",
+    "rows": 3,
+    "replay_hashes": []
+  },
+  "geometry": {
+    "dir": "runs\\build-20261101-235711\\geometry",
+    "files": [],
+    "parts": {
+      "body": {
+        "path": "runs\\build-20261101-235711\\geometry\\body.stl",
+        "hash": "sha256:17203491f7799ca02628150f914fd68f",
+        "exists": false
+      },
+      "insert": {
+        "path": "runs\\build-20261101-235711\\geometry\\insert.stl",
+        "hash": "sha256:b9eb114d1431ece0057748a2beab88f1",
+        "exists": false
+      }
+    },
+    "complete": false
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

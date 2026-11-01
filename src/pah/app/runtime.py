@@ -143,6 +143,8 @@ class RuntimeConfig:
     policy: str = "rule"
     rounds: int = 3
     resume: bool = False
+    #: Asked once per round; a cancelled episode closes as `cancelled` / `stopped`.
+    cancel: Any = None
 
 
 def budget_for(rounds: int, *, geom_calls: int | None = None, sim_calls: int | None = None) -> Budget:
@@ -804,6 +806,7 @@ class Runtime:
             registry=bridge,
             policy=policy,
             observer=observer,
+            cancel=self.cfg.cancel,
             # The mandate is the real ceiling; this only stops a runaway policy.
             max_rounds=max(1, budget.rounds),
         )
@@ -1175,6 +1178,25 @@ class Runtime:
                 "tokens": sum(rnd.cost.tokens for rnd in rounds),
                 "billing_note": "calls and tokens are the comparison unit; money is provider-declared",
             },
+            # Why an episode ended without a decision. An environment certificate means
+            # the tool could not answer — a missing resource package, a crashed
+            # simulator — and its sentence is the only thing that tells a user whether
+            # to retry, top up a quota, or report a bug. Dropping it here is how a run
+            # reports "failed" and leaves the person guessing (measured: a user saw
+            # `failed` with no reason while the API had said "积分已用尽").
+            "errors": [
+                {
+                    "code": cert.code,
+                    "observed_by": cert.observed_by,
+                    "detail": str(
+                        (cert.magnitude or {}).get("error")
+                        or (cert.magnitude or {}).get("reason")
+                        or ""
+                    ),
+                }
+                for cert in certificates
+                if cert.family == "environment"
+            ],
             "counts": {
                 # Whether the *policy* closed the loop on this design. Not a dataset
                 # yield, and never added to the two columns below.

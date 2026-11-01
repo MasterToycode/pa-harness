@@ -47,6 +47,11 @@ class JobState:
         self.result: dict | None = None
         self.started = 0.0
         self.finished = 0.0
+        #: Set by the page's stop button; the loop asks it once per round. It cannot
+        #: abort a generation that has already been submitted (that one is billed
+        #: either way), but it guarantees no *further* round starts — which is what a
+        #: mis-click actually costs.
+        self.cancel_event = threading.Event()
 
     def begin(self) -> None:
         with self.lock:
@@ -55,6 +60,16 @@ class JobState:
             self.result = None
             self.started = time.time()
             self.finished = 0.0
+            self.cancel_event.clear()
+
+    def cancel(self) -> None:
+        """Ask the running build to stop after the current round."""
+        with self.lock:
+            if self.state != "running":
+                return
+            self.cancel_event.set()
+            self.log.append("cancel requested: no further round will start "
+                            "(a generation already submitted is billed)")
 
     def note(self, line: str) -> None:
         with self.lock:
@@ -68,6 +83,7 @@ class JobState:
             if error:
                 self.log.append(f"FAILED: {error}")
             self.finished = time.time()
+            self.cancel_event.clear()
 
     def snapshot(self) -> dict:
         with self.lock:
@@ -75,6 +91,7 @@ class JobState:
                 "state": self.state,
                 "log": list(self.log),
                 "result": self.result,
+                "cancelling": self.cancel_event.is_set(),
                 "elapsed": round((self.finished or time.time()) - self.started, 1)
                 if self.started
                 else 0.0,
@@ -95,6 +112,7 @@ def _run_job(job: JobState, fields: dict[str, str]) -> None:
             out=fields.get("out") or None,
             config=fields.get("config") or None,
             progress=job.note,
+            cancel=job.cancel_event.is_set,
         )
         job.finish(result=result)
     except Exception as error:  # noqa: BLE001 - the page shows the sentence
@@ -126,6 +144,8 @@ _PAGE = """<!doctype html>
       border:1px solid #2f6f9f; background:#1b4b6e; color:#eaf4ff; font-size:14px;
       font-weight:600; cursor:pointer; }}
   button:disabled {{ opacity:.55; cursor:progress; }}
+  #stop {{ border-color:#a35a3a; background:#5a2f1e; color:#ffe0cf; margin-top:8px; }}
+  #stop[hidden] {{ display:none; }}
   #status {{ font-size:12px; color:#8ba0b5; margin-top:10px; min-height:16px; }}
   #log {{ margin-top:12px; background:#0b1017; border:1px solid #1d2836; border-radius:8px;
       padding:10px; font-family: ui-monospace, Consolas, monospace; font-size:11.5px;
@@ -163,9 +183,11 @@ _PAGE = """<!doctype html>
         <input id="config" placeholder="（默认 ./pah.toml）" value="{config}"></div>
     </div>
     <button id="go">开始生成</button>
+    <button id="stop" hidden>停止（不再开始新的轮次）</button>
     <div id="status">就绪</div>
     <div id="log" hidden></div>
-    <div class="note">每轮会调用一次生成服务（混元）。轮数=1 最便宜；验证是本地计算。</div>
+    <div class="note">每轮会调用一次生成服务（混元）。一次 build 最多 <b>1 + 轮数</b> 次生成：
+      首轮物化 1 次，之后每个修复轮各 1 次。点错了可以按「停止」，但已经提交给云端的那一次仍会计费。</div>
   </section>
   <section class="panel">
     <h2>2 · 结果</h2>
@@ -199,7 +221,14 @@ function poll() {{
     // A finished job survives a page reload: the server keeps the last result, so
     // refreshing (or reopening the page later) still shows the part you just built.
     if (s.result) renderResult(s.result);
-    if (s.state === "running") {{ timer = setTimeout(poll, 1000); return; }}
+    if (s.state === "running") {{
+      $("stop").hidden = false;
+      $("stop").disabled = !!s.cancelling;
+      $("stop").textContent = s.cancelling ? "正在停止…" : "停止（不再开始新的轮次）";
+      timer = setTimeout(poll, 1000);
+      return;
+    }}
+    $("stop").hidden = true;
     $("go").disabled = false;
   }});
 }}
@@ -223,6 +252,11 @@ function renderResult(r) {{
 }}
 
 $("go").onclick = start;
+$("stop").onclick = () => {{
+  $("stop").disabled = true;
+  $("stop").textContent = "正在停止…";
+  fetch("/cancel", {{ method: "POST" }}).then(poll);
+}};
 poll();   // pick up a result that already exists
 </script>
 """
@@ -298,13 +332,17 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib naming
         parsed = urllib.parse.urlparse(self.path)
+        job: JobState = self.server.job  # type: ignore[attr-defined]
+        if parsed.path == "/cancel":
+            job.cancel()
+            self._json(job.snapshot())
+            return
         if parsed.path != "/build":
             self._json({"error": "not found"}, 404)
             return
         length = int(self.headers.get("Content-Length") or 0)
         body = self.rfile.read(length).decode("utf-8", "replace")
         fields = {k: v[0] for k, v in urllib.parse.parse_qs(body).items()}
-        job: JobState = self.server.job  # type: ignore[attr-defined]
         with job.lock:
             running = job.state == "running"
         if running:

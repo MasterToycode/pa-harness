@@ -140,3 +140,29 @@ def test_a_second_build_is_refused_while_one_runs():
     job.finish(result={"verdict": "repaired"})
     assert job.snapshot()["state"] == "done"
     assert job.snapshot()["result"] == {"verdict": "repaired"}
+
+
+# --------------------------------------------------------------------------- #
+# a failed episode must say why
+# --------------------------------------------------------------------------- #
+def test_a_failed_episode_keeps_the_reason_it_was_told(monkeypatch, tmp_path):
+    """Measured: a user saw `failed` with no explanation while the generator API had
+    answered "资源包积分已用尽". The sentence has to reach the report."""
+    from _design_fakes import design_spec, install
+
+    from pah.app import runtime as runtime_module
+    from pah.app.runtime import RuntimeConfig
+
+    install(monkeypatch, mode="crash")
+    config = RuntimeConfig(out=tmp_path / "ep", policy="rule", rounds=1)
+    with runtime_module.build(config) as composed:
+        report = composed.run_episode(
+            design_spec(clearance_mm=0.0), policy_name="rule", rounds=1
+        )
+
+    assert report["episode"]["verdict"] == "failed"
+    assert report["counts"]["environment_errors"] >= 1
+    assert report["errors"], "a failed episode must carry its cause"
+    detail = report["errors"][0]["detail"]
+    assert "积分" in detail or "ResourceInsufficient" in detail
+    assert report["errors"][0]["code"] == "verifier_error"

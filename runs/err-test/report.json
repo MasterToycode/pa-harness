@@ -1,0 +1,152 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\err-test",
+    "policy": "rule",
+    "rounds_requested": 1,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.446,
+    "generator": "hunyuan:python"
+  },
+  "ticket": {
+    "id": "bef1317628da2f6b661b94ac486c4745",
+    "outcome": "stopped",
+    "reason": "verifier could not run"
+  },
+  "episode": {
+    "verdict": "failed",
+    "reason": "verifier could not run",
+    "rounds": 0
+  },
+  "budget": {
+    "rounds": {
+      "budget": 1,
+      "used": 0,
+      "left": 1
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 0,
+      "left": 16
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 0,
+      "left": 8
+    },
+    "verifier_spend": {
+      "geom_calls": 0,
+      "sim_calls": 0
+    },
+    "rounds_produced": 0,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "design-peg_hole",
+    "kind": "peg_hole",
+    "requirement": "一个实心的圆柱插销，顶部是一个扁平的圆形头部，头部比销身宽，底面有倒角，竖直立在原点，表面光滑连续；不要中空，不要镂空，不要晶格或蜂窝结构，不要底座和支撑结构",
+    "initial_content_key": "sha256:c8fe524709a77ca272543bfcfc8754a2",
+    "final_content_key": "sha256:c8fe524709a77ca272543bfcfc8754a2",
+    "initial_clearance_mm": 0.1,
+    "final_clearance_mm": 0.1,
+    "final_revision": 1,
+    "provenance": {
+      "via": "pah build",
+      "prompt": "一个实心的圆柱插销，顶部是一个扁平的圆形头部，头部比销身宽，底面有倒角，竖直立在原点，表面光滑连续；不要中空，不要镂空，不要晶格或蜂窝结构，不要底座和支撑结构",
+      "pose": "builder:peg_hole.seated_pose_mm",
+      "design": "default"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "errors": [
+    {
+      "code": "verifier_error",
+      "observed_by": "design_cascade",
+      "detail": "RuntimeError: hunyuan3d SubmitHunyuanTo3DRapidJob 调用失败 [ResourceInsufficient]: 资源包积分已用尽，请至控制台(https://console.cloud.tencent.com/ai3d)开通后付费或购买资源包。."
+    }
+  ],
+  "counts": {
+    "repaired_by_policy": 0,
+    "physical_failures_final": 0,
+    "final_codes": [
+      "verifier_error"
+    ],
+    "environment_errors": 1,
+    "verifier_error_events": 0,
+    "unknown": 1,
+    "error_rounds": [],
+    "not_evaluated": 0,
+    "not_evaluated_by": []
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "insert_material",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {}
+  },
+  "verdicts": {
+    "assemblable": {
+      "ok": true,
+      "blocking": [],
+      "not_evaluated": [],
+      "validated": "full"
+    },
+    "printable": {
+      "ok": false,
+      "blocking": [],
+      "not_evaluated": [],
+      "watertight": {},
+      "validated": "partial"
+    },
+    "meaning": "ok=false means a registered check proved a defect; 'not_evaluated' means that check did not run. Neither list is a pass claim, and the two are never added together."
+  },
+  "trace": {
+    "path": "runs\\err-test\\trace.jsonl",
+    "rows": 3,
+    "replay_hashes": []
+  },
+  "geometry": {
+    "dir": "runs\\err-test\\geometry",
+    "files": [],
+    "parts": {
+      "body": {
+        "path": "runs\\err-test\\geometry\\body.stl",
+        "hash": "sha256:17203491f7799ca02628150f914fd68f",
+        "exists": false
+      },
+      "insert": {
+        "path": "runs\\err-test\\geometry\\insert.stl",
+        "hash": "sha256:b9eb114d1431ece0057748a2beab88f1",
+        "exists": false
+      }
+    },
+    "complete": false
+  },
+  "plugins": {
+    "loaded": 20,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

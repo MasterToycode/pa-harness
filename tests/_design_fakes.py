@@ -178,6 +178,13 @@ class BandCascade:
     def check(self, assembly: Any) -> list[FailureCertificate]:
         spec = spec_of(assembly)
         self.calls += 1
+        if self.mode == "crash":
+            # What a dead external service looks like from the cascade's side: the
+            # materialiser itself refuses, so there is nothing to look at.
+            raise RuntimeError(
+                "hunyuan3d SubmitHunyuanTo3DRapidJob 调用失败 [ResourceInsufficient]: "
+                "资源包积分已用尽，请至控制台开通后付费"
+            )
         cached = self._designs.get(spec.content_key())
         if cached is None:
             cached = self._materializer(spec, self.root)

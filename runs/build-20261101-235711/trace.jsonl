@@ -1,0 +1,3 @@
+{"seq": 1, "at": "2026-11-01T15:57:13.659325+00:00", "kind": "episode.begin", "ticket": "b661d2902f58dce736a7f2761c93d58a", "policy": "llm", "assembly": "b661d2902f58dce736a7f2761c93d58a"}
+{"seq": 2, "at": "2026-11-01T15:57:14.462103+00:00", "kind": "verify", "ticket": "b661d2902f58dce736a7f2761c93d58a", "phase": "before", "codes": ["verifier_error"], "physical": 0, "verified": false}
+{"seq": 3, "at": "2026-11-01T15:57:14.463349+00:00", "kind": "ticket.end", "ticket": "b661d2902f58dce736a7f2761c93d58a", "outcome": "stopped", "reason": "verifier could not run", "rounds": 0, "geom_calls": 0, "sim_calls": 0}
