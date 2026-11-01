@@ -1,0 +1,12 @@
+{
+  "verdict": "repaired",
+  "reason": "verified after repair",
+  "rounds": 2,
+  "final_radius": 0.9,
+  "replay_hashes": [
+    "6d911e2f569becaf08f68dabb88f5ed0",
+    "a45b05a6016c9959fcee94dd5ea59d39"
+  ],
+  "trace_rows": 10,
+  "ticket_ended": "repaired"
+}

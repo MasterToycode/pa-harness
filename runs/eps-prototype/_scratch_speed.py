@@ -1,0 +1,15 @@
+import time, numpy as np, trimesh
+from pathlib import Path
+G = Path(r"D:\yanyi\rl_assembly\data\assemblies_pre_decimate")
+t0=time.perf_counter()
+ma = trimesh.load(G/"asm_000062"/"parts"/"part_000.ply", process=False)
+mb = trimesh.load(G/"asm_000062"/"parts"/"part_008.ply", process=False)
+print(f"load {time.perf_counter()-t0:.1f}s  A {len(ma.faces)}f {len(ma.vertices)}v  B {len(mb.faces)}f {len(mb.vertices)}v")
+print("bounds A", np.round(ma.bounds,4).tolist(), "B", np.round(mb.bounds,4).tolist())
+t0=time.perf_counter()
+cp = trimesh.proximity.ClosestPoint(mb)
+print(f"ClosestPoint build {time.perf_counter()-t0:.2f}s")
+pts = np.asarray(ma.vertices)
+t0=time.perf_counter()
+d, idx = cp.on_surface(pts)
+print(f"on_surface {len(pts)} pts: {time.perf_counter()-t0:.2f}s  zero={int((d<=1e-9).sum())} <1e-6={int((d<=1e-6).sum())} <1e-5={int((d<=1e-5).sum())}")

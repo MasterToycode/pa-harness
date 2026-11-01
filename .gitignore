@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+# Geometry under a run directory is deterministically regenerated from spec.json;
+# the trace and the spec are the evidence, the STLs are a cache of them.
+runs/**/geometry/
+runs/**/*.stl
+# Local, never committed: keys live in the environment, paths in pah.toml.
+pah.toml
+.DS_Store

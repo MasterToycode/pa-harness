@@ -1,0 +1,74 @@
+[
+  {
+    "asm": "asm_000039",
+    "a": "part_009",
+    "b": "part_010",
+    "reported_mm": 0.0,
+    "touching": true,
+    "independent_mm": 0.0,
+    "agrees": true
+  },
+  {
+    "asm": "asm_000019",
+    "a": "part_000",
+    "b": "part_006",
+    "reported_mm": 0.0,
+    "touching": true,
+    "independent_mm": 0.0,
+    "agrees": true
+  },
+  {
+    "asm": "asm_000046",
+    "a": "part_006",
+    "b": "part_007",
+    "reported_mm": 0.0,
+    "touching": true,
+    "independent_mm": 0.0,
+    "agrees": true
+  },
+  {
+    "asm": "asm_000073",
+    "a": "part_014",
+    "b": "part_015",
+    "reported_mm": 0.0,
+    "touching": true,
+    "independent_mm": 0.0,
+    "agrees": true
+  },
+  {
+    "asm": "asm_000010",
+    "a": "part_004",
+    "b": "part_005",
+    "reported_mm": 0.4931787190168509,
+    "touching": false,
+    "independent_mm": 0.493193283482886,
+    "agrees": true
+  },
+  {
+    "asm": "asm_000013",
+    "a": "part_001",
+    "b": "part_004",
+    "reported_mm": 0.2720143370503817,
+    "touching": false,
+    "independent_mm": 0.2724919833935308,
+    "agrees": true
+  },
+  {
+    "asm": "asm_000062",
+    "a": "part_002",
+    "b": "part_009",
+    "reported_mm": 0.5746734080876051,
+    "touching": false,
+    "independent_mm": 0.5749117096602577,
+    "agrees": true
+  },
+  {
+    "asm": "asm_000020",
+    "a": "part_001",
+    "b": "part_003",
+    "reported_mm": 0.6304019133464729,
+    "touching": false,
+    "independent_mm": 0.630412870912983,
+    "agrees": true
+  }
+]

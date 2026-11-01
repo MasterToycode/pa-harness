@@ -1,0 +1,5 @@
+{
+ "split": "feasible",
+ "unit_mm_rule": "scale",
+ "edge_file": "D:\\yanyi\\rl_assembly\\research\\contact-graph-anchor\\edges_v2.json"
+}

@@ -1,0 +1,51 @@
+edges: 953 total, 705 in split=feasible, 93 assemblies
+geometry: D:\yanyi\rl_assembly\data\assemblies_pre_decimate
+unit_mm rule: scale
+  [  5/93] asm_000006 (12 edges)
+  [ 10/93] asm_000012 (1 edges)
+  [ 15/93] asm_000011 (8 edges)
+  [ 20/93] asm_000016 (10 edges)
+  [ 25/93] asm_000028 (1 edges)
+  [ 30/93] asm_000034 (7 edges)
+  [ 35/93] asm_000033 (6 edges)
+  [ 40/93] asm_000039 (15 edges)
+  [ 45/93] asm_000047 (7 edges)
+  [ 50/93] asm_000053 (15 edges)
+  [ 55/93] asm_000059 (3 edges)
+  [ 60/93] asm_000058 (16 edges)
+  [ 65/93] asm_000070 (5 edges)
+  [ 70/93] asm_000073 (14 edges)
+  [ 75/93] asm_000077 (3 edges)
+  [ 80/93] asm_000079 (7 edges)
+  [ 85/93] asm_000090 (2 edges)
+  [ 90/93] asm_000096 (2 edges)
+  [ 93/93] asm_000097 (16 edges)
+
+==============================================================
+M0 connector probe — gold standard 705 / 388 / 55.0%
+==============================================================
+  split=feasible  scope=gold  assemblies=93  edges_total=953  unit_mm rule=scale
+  edges_total       953
+  feasible          705   gold 705    delta +0
+  success           393   gold 388    delta +5
+  rate            55.7%   gold 55.0%   delta +0.7%
+  ran               705 / 705
+
+  unreatable_too_small   29 (gold 29) | adapter-feasible 676
+    gap_too_wide                166
+    no_material_hit              72
+    unreatable_too_small         29
+    socket_breaks_wall           17
+    degenerate_other             17
+    peg_detached                  8
+    degenerate_tangent            3
+
+  edge-by-edge vs frozen gold rows: 705 compared, 5 mismatch
+    asm_000097:912 adapter=ok gold=fail
+    asm_000097:916 adapter=ok gold=fail
+    asm_000097:917 adapter=ok gold=fail
+    asm_000097:919 adapter=ok gold=fail
+    asm_000097:920 adapter=ok gold=fail
+
+  REPRODUCED-MODULO-ENVIRONMENT   (1217.6 s)
+  5 edge(s) gold lost to `MemoryError` pass here -> adjusted success 388 / 705

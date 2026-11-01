@@ -1,0 +1,403 @@
+{
+  "out": "runs\\m1-dcap\\_smoke",
+  "rows": {
+    "baseline": 7,
+    "cap_only": 7,
+    "variant": 7
+  },
+  "arms": [
+    "baseline",
+    "cap_only",
+    "variant"
+  ],
+  "groups": {
+    "g73": 2,
+    "e80": 2,
+    "all238": 7
+  },
+  "repairs": {
+    "cap_only_vs_baseline": {
+      "g73": {
+        "n": 2,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 0,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 0,
+        "treatment_success": 0
+      },
+      "e80": {
+        "n": 2,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 0,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 0,
+        "treatment_success": 0
+      },
+      "all238": {
+        "n": 7,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 5,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 5,
+        "treatment_success": 5
+      },
+      "control_only_split": {
+        "floor_veto": 0,
+        "other": 0
+      }
+    },
+    "variant_vs_baseline": {
+      "g73": {
+        "n": 2,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 0,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 0,
+        "treatment_success": 0
+      },
+      "e80": {
+        "n": 2,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 0,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 0,
+        "treatment_success": 0
+      },
+      "all238": {
+        "n": 7,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 5,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 5,
+        "treatment_success": 5
+      },
+      "control_only_split": {
+        "floor_veto": 0,
+        "other": 0
+      }
+    },
+    "variant_vs_cap_only": {
+      "g73": {
+        "n": 2,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 0,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 0,
+        "treatment_success": 0
+      },
+      "e80": {
+        "n": 2,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 0,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 0,
+        "treatment_success": 0
+      },
+      "all238": {
+        "n": 7,
+        "treatment_only": 0,
+        "control_only": 0,
+        "both_success": 5,
+        "both_fail": 2,
+        "mcnemar_exact_p": null,
+        "control_success": 5,
+        "treatment_success": 5
+      },
+      "control_only_split": {
+        "floor_veto": 0,
+        "other": 0
+      }
+    }
+  },
+  "socket_breaks_wall": {
+    "baseline": {
+      "socket_breaks_wall": 0,
+      "degenerate_thin_wall": 0,
+      "success": 5,
+      "n": 7
+    },
+    "cap_only": {
+      "socket_breaks_wall": 0,
+      "degenerate_thin_wall": 0,
+      "success": 5,
+      "n": 7
+    },
+    "variant": {
+      "socket_breaks_wall": 0,
+      "degenerate_thin_wall": 0,
+      "success": 5,
+      "n": 7
+    }
+  },
+  "ivr": {
+    "baseline": {
+      "n_repaired": 5,
+      "n_known": 5,
+      "n_unknown": 0,
+      "n_error": 0,
+      "pair_ivr": {
+        "n": 5,
+        "min": 0.0,
+        "p05": 0.0,
+        "p50": 0.0,
+        "p95": 2e-06,
+        "max": 3e-06
+      },
+      "contrib_lo": 0.0,
+      "contrib_hi": 1.0618265774731415,
+      "contrib_p50": 0.0
+    },
+    "cap_only": {
+      "n_repaired": 5,
+      "n_known": 5,
+      "n_unknown": 0,
+      "n_error": 0,
+      "pair_ivr": {
+        "n": 5,
+        "min": 0.0,
+        "p05": 0.0,
+        "p50": 0.0,
+        "p95": 3.5e-05,
+        "max": 4.3e-05
+      },
+      "contrib_lo": 0.0,
+      "contrib_hi": 1.0618644869317952,
+      "contrib_p50": 0.0
+    },
+    "variant": {
+      "n_repaired": 5,
+      "n_known": 5,
+      "n_unknown": 0,
+      "n_error": 0,
+      "pair_ivr": {
+        "n": 5,
+        "min": 0.0,
+        "p05": 0.0,
+        "p50": 0.0,
+        "p95": 2e-05,
+        "max": 2.4e-05
+      },
+      "contrib_lo": 0.0,
+      "contrib_hi": 1.0618463975163213,
+      "contrib_p50": 0.0
+    }
+  },
+  "codes": {
+    "baseline": {
+      "": 5,
+      "gap_too_wide": 2
+    },
+    "cap_only": {
+      "": 5,
+      "gap_too_wide": 2
+    },
+    "variant": {
+      "": 5,
+      "gap_too_wide": 2
+    }
+  },
+  "transitions": {
+    "cap_only_vs_baseline": {},
+    "variant_vs_baseline": {},
+    "variant_vs_cap_only": {}
+  },
+  "residual_wall": {
+    "baseline": {
+      "n": 5,
+      "wall_remaining_mm": {
+        "n": 5,
+        "min": 0.165408,
+        "p05": 0.227678,
+        "p50": 1.017771,
+        "p95": 3.460578,
+        "max": 3.916739
+      },
+      "margin_mm": {
+        "n": 4,
+        "min": -0.398919,
+        "p05": -0.359841,
+        "p50": 0.182896,
+        "p95": 2.409029,
+        "max": 2.745177
+      },
+      "floors_mm": {
+        "n": 4,
+        "min": 0.30381,
+        "p05": 0.335275,
+        "p50": 0.694627,
+        "p95": 1.127179,
+        "max": 1.171562
+      },
+      "at_floor": 0,
+      "near_floor": 0,
+      "below_floor": 2,
+      "guard_trips": 0,
+      "depth_mm": {
+        "n": 5,
+        "min": 0.696766,
+        "p05": 0.727646,
+        "p50": 2.156635,
+        "p95": 12.464563,
+        "max": 14.9982
+      },
+      "r_mm": {
+        "n": 5,
+        "min": 0.661631,
+        "p05": 0.680317,
+        "p50": 0.976626,
+        "p95": 4.804068,
+        "max": 5.528328
+      }
+    },
+    "cap_only": {
+      "n": 5,
+      "wall_remaining_mm": {
+        "n": 5,
+        "min": 0.165408,
+        "p05": 0.187714,
+        "p50": 0.476757,
+        "p95": 1.436583,
+        "max": 1.635934
+      },
+      "margin_mm": {
+        "n": 4,
+        "min": -0.532385,
+        "p05": -0.512365,
+        "p50": -0.31778,
+        "p95": -0.153138,
+        "max": -0.138402
+      },
+      "floors_mm": {
+        "n": 4,
+        "min": 0.30381,
+        "p05": 0.335275,
+        "p50": 0.694627,
+        "p95": 1.127179,
+        "max": 1.171562
+      },
+      "at_floor": 0,
+      "near_floor": 0,
+      "below_floor": 4,
+      "guard_trips": 0,
+      "depth_mm": {
+        "n": 5,
+        "min": 0.696766,
+        "p05": 0.805275,
+        "p50": 2.330015,
+        "p95": 12.769383,
+        "max": 14.9982
+      },
+      "r_mm": {
+        "n": 5,
+        "min": 0.661631,
+        "p05": 0.750855,
+        "p50": 1.907028,
+        "p95": 4.934004,
+        "max": 5.528328
+      }
+    },
+    "variant": {
+      "n": 5,
+      "wall_remaining_mm": {
+        "n": 5,
+        "min": 0.438837,
+        "p05": 0.498016,
+        "p50": 1.264866,
+        "p95": 1.683808,
+        "max": 1.695776
+      },
+      "margin_mm": {
+        "n": 4,
+        "min": 0.135027,
+        "p05": 0.147946,
+        "p50": 0.305172,
+        "p95": 0.50396,
+        "max": 0.524214
+      },
+      "floors_mm": {
+        "n": 4,
+        "min": 0.30381,
+        "p05": 0.335275,
+        "p50": 0.694627,
+        "p95": 1.127179,
+        "max": 1.171562
+      },
+      "at_floor": 0,
+      "near_floor": 0,
+      "below_floor": 0,
+      "guard_trips": 0,
+      "depth_mm": {
+        "n": 5,
+        "min": 0.544861,
+        "p05": 0.632885,
+        "p50": 1.892177,
+        "p95": 12.651983,
+        "max": 14.9982
+      },
+      "r_mm": {
+        "n": 5,
+        "min": 0.540107,
+        "p05": 0.612943,
+        "p50": 1.556758,
+        "p95": 4.840084,
+        "max": 5.528328
+      }
+    }
+  },
+  "measurement": {
+    "n_measured": 6,
+    "n_unmeasured": 1,
+    "n_targets": 7,
+    "wall_over_file_t_b": {
+      "n": 6,
+      "min": 0.457472,
+      "p05": 0.533861,
+      "p50": 1.016876,
+      "p95": 1.896546,
+      "max": 2.153047
+    },
+    "wall_over_span": {
+      "n": 6,
+      "min": 0.036767,
+      "p05": 0.05761,
+      "p50": 1.0,
+      "p95": 1.0,
+      "max": 1.0
+    },
+    "d_cap_gain": {
+      "n": 6,
+      "min": 0.457472,
+      "p05": 0.533861,
+      "p50": 1.205104,
+      "p95": 2.348401,
+      "max": 2.413519
+    },
+    "d_cap_shrink": 2,
+    "wall_mm": {
+      "n": 6,
+      "min": 0.977856,
+      "p05": 0.981767,
+      "p50": 2.04347,
+      "p95": 5.487952,
+      "max": 5.857809
+    },
+    "n_with_cavity_after": 2,
+    "n_multi_layer": 2
+  }
+}

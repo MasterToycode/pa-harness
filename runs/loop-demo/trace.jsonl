@@ -1,0 +1,10 @@
+{"seq": 1, "at": "2026-11-01T12:34:49.220140+00:00", "kind": "episode.begin", "ticket": "t-demo", "policy": "rule", "assembly": "t-demo"}
+{"seq": 2, "at": "2026-11-01T12:34:49.220236+00:00", "kind": "verify", "ticket": "t-demo", "phase": "before", "codes": ["gap_too_wide"], "physical": 1, "verified": true}
+{"seq": 3, "at": "2026-11-01T12:34:49.220329+00:00", "kind": "round.begin", "ticket": "t-demo", "round": 0, "operator": "resize_connector", "targets": ["p0", "p1"], "policy": "rule"}
+{"seq": 4, "at": "2026-11-01T12:34:49.221606+00:00", "kind": "verify", "ticket": "t-demo", "phase": "after", "codes": ["gap_too_wide"], "physical": 1, "verified": true}
+{"seq": 5, "at": "2026-11-01T12:34:49.222479+00:00", "kind": "round.close", "ticket": "t-demo", "round": 0, "verdict": "fail", "geom_calls": 1, "sim_calls": 0, "geom_hash": "6d911e2f569becaf08f68dabb88f5ed0"}
+{"seq": 6, "at": "2026-11-01T12:34:49.222612+00:00", "kind": "verify", "ticket": "t-demo", "phase": "before", "codes": ["gap_too_wide"], "physical": 1, "verified": true}
+{"seq": 7, "at": "2026-11-01T12:34:49.222717+00:00", "kind": "round.begin", "ticket": "t-demo", "round": 1, "operator": "resize_connector", "targets": ["p0", "p1"], "policy": "rule"}
+{"seq": 8, "at": "2026-11-01T12:34:49.224078+00:00", "kind": "verify", "ticket": "t-demo", "phase": "after", "codes": [], "physical": 0, "verified": true}
+{"seq": 9, "at": "2026-11-01T12:34:49.225122+00:00", "kind": "round.close", "ticket": "t-demo", "round": 1, "verdict": "pass", "geom_calls": 1, "sim_calls": 0, "geom_hash": "a45b05a6016c9959fcee94dd5ea59d39"}
+{"seq": 10, "at": "2026-11-01T12:34:49.225812+00:00", "kind": "ticket.end", "ticket": "t-demo", "outcome": "repaired", "reason": "verified after repair", "rounds": 2, "geom_calls": 2, "sim_calls": 0}

@@ -1,0 +1,242 @@
+[
+ {
+  "asm": "asm_000000",
+  "object_id": "0000c32fde7f45efb8d14e8ba737d50c",
+  "raw": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\objects\\0000c32fde7f45efb8d14e8ba737d50c",
+   "status": "ok",
+   "n_parts": 10,
+   "pairs_total": 45,
+   "pairs_culled": 27,
+   "pairs_exact": 18,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 15,
+   "ivr_assembly": 0.02887733972796359,
+   "ivr_lo": 0.02887733972796359,
+   "ivr_hi": 0.02887733972796359,
+   "ivr_max_pair": 0.008506797384127672,
+   "max_pair": [
+    "part_3",
+    "part_5"
+   ],
+   "max_pair_volume": 0.0005609863208226167,
+   "diagonal": 2.106517641978335,
+   "equiv_edge_over_diagonal": 0.03915185315786029,
+   "elapsed_s": 1.49
+  },
+  "trimmed": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate\\asm_000000",
+   "status": "ok",
+   "n_parts": 8,
+   "pairs_total": 28,
+   "pairs_culled": 17,
+   "pairs_exact": 11,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 0,
+   "ivr_assembly": 0.0,
+   "ivr_lo": 0.0,
+   "ivr_hi": 0.0,
+   "ivr_max_pair": 0.0,
+   "max_pair": [
+    "part_000",
+    "part_001"
+   ],
+   "max_pair_volume": 0.0,
+   "diagonal": 0.16057650925095981,
+   "equiv_edge_over_diagonal": null,
+   "elapsed_s": 2.17
+  }
+ },
+ {
+  "asm": "asm_000001",
+  "object_id": "0000ee4c32876db45783dcacdc183fc6fe951e6f8eb793fa844f26b93de2a8fb",
+  "raw": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\objects\\0000ee4c32876db45783dcacdc183fc6fe951e6f8eb793fa844f26b93de2a8fb",
+   "status": "ok",
+   "n_parts": 7,
+   "pairs_total": 21,
+   "pairs_culled": 13,
+   "pairs_exact": 8,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 8,
+   "ivr_assembly": 0.00915814939103709,
+   "ivr_lo": 0.00915814939103709,
+   "ivr_hi": 0.00915814939103709,
+   "ivr_max_pair": 0.0038523925025218367,
+   "max_pair": [
+    "part_0",
+    "part_5"
+   ],
+   "max_pair_volume": 0.0007229064910880971,
+   "diagonal": 2.9846214352869405,
+   "equiv_edge_over_diagonal": 0.030070324936401955,
+   "elapsed_s": 5.67
+  },
+  "trimmed": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate\\asm_000001",
+   "status": "ok",
+   "n_parts": 7,
+   "pairs_total": 21,
+   "pairs_culled": 13,
+   "pairs_exact": 8,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 2,
+   "ivr_assembly": 3.172933457968409e-19,
+   "ivr_lo": 3.172933457968409e-19,
+   "ivr_hi": 3.172933457968409e-19,
+   "ivr_max_pair": 3.172933422657222e-19,
+   "max_pair": [
+    "part_000",
+    "part_004"
+   ],
+   "max_pair_volume": 2.5909731697035948e-23,
+   "diagonal": 0.2275615502584237,
+   "equiv_edge_over_diagonal": 1.3003355068726463e-07,
+   "elapsed_s": 5.33
+  }
+ },
+ {
+  "asm": "asm_000002",
+  "object_id": "00017c8cde082479972482331c89971ec8c6a7a9d434d7b50325026a04138c6d",
+  "raw": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\objects\\00017c8cde082479972482331c89971ec8c6a7a9d434d7b50325026a04138c6d",
+   "status": "ok",
+   "n_parts": 9,
+   "pairs_total": 36,
+   "pairs_culled": 24,
+   "pairs_exact": 12,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 8,
+   "ivr_assembly": 0.02804640183248959,
+   "ivr_lo": 0.02804640183248959,
+   "ivr_hi": 0.02804640183248959,
+   "ivr_max_pair": 0.007147087200591215,
+   "max_pair": [
+    "part_4",
+    "part_8"
+   ],
+   "max_pair_volume": 0.0027822453669208587,
+   "diagonal": 2.4731498542168344,
+   "equiv_edge_over_diagonal": 0.056869757604763184,
+   "elapsed_s": 5.97
+  },
+  "trimmed": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate\\asm_000002",
+   "status": "ok",
+   "n_parts": 9,
+   "pairs_total": 36,
+   "pairs_culled": 26,
+   "pairs_exact": 10,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 0,
+   "ivr_assembly": 0.0,
+   "ivr_lo": 0.0,
+   "ivr_hi": 0.0,
+   "ivr_max_pair": 0.0,
+   "max_pair": [
+    "part_000",
+    "part_004"
+   ],
+   "max_pair_volume": 0.0,
+   "diagonal": 0.18857701326168258,
+   "equiv_edge_over_diagonal": null,
+   "elapsed_s": 4.78
+  }
+ },
+ {
+  "asm": "asm_000004",
+  "object_id": "00029fdf397c90788939573a1847ec7bbb5243be5b616f330911d3048f49bddc",
+  "raw": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\objects\\00029fdf397c90788939573a1847ec7bbb5243be5b616f330911d3048f49bddc",
+   "status": "ok",
+   "n_parts": 3,
+   "pairs_total": 3,
+   "pairs_culled": 0,
+   "pairs_exact": 3,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 2,
+   "ivr_assembly": 0.0161655323589316,
+   "ivr_lo": 0.0161655323589316,
+   "ivr_hi": 0.0161655323589316,
+   "ivr_max_pair": 0.015732246324410542,
+   "max_pair": [
+    "part_0",
+    "part_2"
+   ],
+   "max_pair_volume": 0.0035332581470964323,
+   "diagonal": 2.2328795544209292,
+   "equiv_edge_over_diagonal": 0.06821184962051309,
+   "elapsed_s": 3.33
+  },
+  "trimmed": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate\\asm_000004",
+   "status": "ok",
+   "n_parts": 3,
+   "pairs_total": 3,
+   "pairs_culled": 1,
+   "pairs_exact": 2,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 0,
+   "ivr_assembly": 0.0,
+   "ivr_lo": 0.0,
+   "ivr_hi": 0.0,
+   "ivr_max_pair": 0.0,
+   "max_pair": [
+    "part_000",
+    "part_002"
+   ],
+   "max_pair_volume": 0.0,
+   "diagonal": 0.17020629167767937,
+   "equiv_edge_over_diagonal": null,
+   "elapsed_s": 1.97
+  }
+ },
+ {
+  "asm": "asm_000010",
+  "object_id": "0005033c6f754d00899127df5e2388f7",
+  "raw": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\objects\\0005033c6f754d00899127df5e2388f7",
+   "status": "ok",
+   "n_parts": 14,
+   "pairs_total": 91,
+   "pairs_culled": 58,
+   "pairs_exact": 33,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 25,
+   "ivr_assembly": 0.030916127985395517,
+   "ivr_lo": 0.030916127985395517,
+   "ivr_hi": 0.030916127985395517,
+   "ivr_max_pair": 0.005221609601272202,
+   "max_pair": [
+    "part_13",
+    "part_6"
+   ],
+   "max_pair_volume": 0.0006010465065093718,
+   "diagonal": 2.0323121315305572,
+   "equiv_edge_over_diagonal": 0.04152525258399068,
+   "elapsed_s": 3.44
+  },
+  "trimmed": {
+   "path": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate\\asm_000010",
+   "status": "ok",
+   "n_parts": 9,
+   "pairs_total": 36,
+   "pairs_culled": 25,
+   "pairs_exact": 11,
+   "n_unknown_pairs": 0,
+   "pairs_nonzero": 0,
+   "ivr_assembly": 0.0,
+   "ivr_lo": 0.0,
+   "ivr_hi": 0.0,
+   "ivr_max_pair": 0.0,
+   "max_pair": [
+    "part_000",
+    "part_001"
+   ],
+   "max_pair_volume": 0.0,
+   "diagonal": 0.15491836804254047,
+   "equiv_edge_over_diagonal": null,
+   "elapsed_s": 1.29
+  }
+ }
+]

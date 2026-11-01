@@ -1,0 +1,271 @@
+{
+ "probe": "connector",
+ "split": "feasible",
+ "scope": "subset",
+ "unit_mm_rule": "meta_scale",
+ "edge_file": "D:\\yanyi\\rl_assembly\\research\\contact-graph-anchor\\edges_v2.json",
+ "geometry_root": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate",
+ "edges_total": 953,
+ "edges_in_split": 38,
+ "assemblies": 5,
+ "ran": 38,
+ "complete": true,
+ "success": 4,
+ "rate": 0.105263,
+ "unreatable_too_small": 28,
+ "host_geometry_unreliable": 0,
+ "adapter_feasible": 10,
+ "codes": {
+  "unreatable_too_small": 28,
+  "gap_too_wide": 4,
+  "no_material_hit": 1,
+  "socket_breaks_wall": 1
+ },
+ "gold": {
+  "feasible": 705,
+  "success": 388,
+  "rate": 0.55
+ },
+ "delta": {
+  "feasible": -667,
+  "success": -384,
+  "rate": -0.444737
+ },
+ "edge_diff": {
+  "available": true,
+  "compared": 38,
+  "mismatches": 22,
+  "details": [
+   {
+    "case_id": "asm_000000",
+    "edge_id": 3,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000000",
+    "edge_id": 5,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000004",
+    "edge_id": 48,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 12,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 14,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 16,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 17,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000002",
+    "edge_id": 20,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000002",
+    "edge_id": 22,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 30,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 33,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 34,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 35,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 36,
+    "adapter": "socket_breaks_wall",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 37,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 39,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 41,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 42,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 43,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "degenerate_other(gap_too_wide_for_wall(gap=3.9476mm,need=4.3468mm>eng_max=0.7984mm))"
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 44,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 45,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 46,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   }
+  ],
+  "examples": [
+   {
+    "case_id": "asm_000000",
+    "edge_id": 3,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000000",
+    "edge_id": 5,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000004",
+    "edge_id": 48,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 12,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 14,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 16,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 17,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000002",
+    "edge_id": 20,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000002",
+    "edge_id": 22,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 30,
+    "adapter": "unreatable_too_small",
+    "gold": "ok",
+    "gold_detail": ""
+   }
+  ]
+ },
+ "seconds": 0.0,
+ "verdict": "subset",
+ "adjusted_success": 4,
+ "reproduced": false
+}

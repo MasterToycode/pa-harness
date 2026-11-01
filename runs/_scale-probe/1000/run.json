@@ -1,0 +1,161 @@
+{
+ "probe": "connector",
+ "split": "feasible",
+ "scope": "subset",
+ "unit_mm_rule": "1000",
+ "edge_file": "D:\\yanyi\\rl_assembly\\research\\contact-graph-anchor\\edges_v2.json",
+ "geometry_root": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate",
+ "edges_total": 953,
+ "edges_in_split": 38,
+ "assemblies": 5,
+ "ran": 38,
+ "complete": true,
+ "success": 20,
+ "rate": 0.526316,
+ "unreatable_too_small": 1,
+ "host_geometry_unreliable": 0,
+ "adapter_feasible": 37,
+ "codes": {
+  "gap_too_wide": 10,
+  "socket_breaks_wall": 3,
+  "degenerate_other": 2,
+  "no_material_hit": 1,
+  "degenerate_tangent": 1,
+  "unreatable_too_small": 1
+ },
+ "gold": {
+  "feasible": 705,
+  "success": 388,
+  "rate": 0.55
+ },
+ "delta": {
+  "feasible": -667,
+  "success": -368,
+  "rate": -0.023684
+ },
+ "edge_diff": {
+  "available": true,
+  "compared": 38,
+  "mismatches": 8,
+  "details": [
+   {
+    "case_id": "asm_000000",
+    "edge_id": 2,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "fragmented_b(share=0.6543<0.6677,ncomp=3/2)"
+   },
+   {
+    "case_id": "asm_000000",
+    "edge_id": 5,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 12,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 15,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "degenerate_other(gap_too_wide_for_wall(gap=1.1800mm,need=2.2683mm>eng_max=2.1766mm))"
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 17,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 34,
+    "adapter": "socket_breaks_wall",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 36,
+    "adapter": "socket_breaks_wall",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 37,
+    "adapter": "socket_breaks_wall",
+    "gold": "ok",
+    "gold_detail": ""
+   }
+  ],
+  "examples": [
+   {
+    "case_id": "asm_000000",
+    "edge_id": 2,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "fragmented_b(share=0.6543<0.6677,ncomp=3/2)"
+   },
+   {
+    "case_id": "asm_000000",
+    "edge_id": 5,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 12,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 15,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "degenerate_other(gap_too_wide_for_wall(gap=1.1800mm,need=2.2683mm>eng_max=2.1766mm))"
+   },
+   {
+    "case_id": "asm_000001",
+    "edge_id": 17,
+    "adapter": "degenerate_geometry",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 34,
+    "adapter": "socket_breaks_wall",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 36,
+    "adapter": "socket_breaks_wall",
+    "gold": "ok",
+    "gold_detail": ""
+   },
+   {
+    "case_id": "asm_000003",
+    "edge_id": 37,
+    "adapter": "socket_breaks_wall",
+    "gold": "ok",
+    "gold_detail": ""
+   }
+  ]
+ },
+ "seconds": 0.0,
+ "verdict": "subset",
+ "adjusted_success": 20,
+ "reproduced": false
+}

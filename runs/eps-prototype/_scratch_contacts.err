@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "D:\yanyi\pa-harness\runs\eps-prototype\_scratch_contacts.py", line 174, in <module>
+    main(asms)
+    ~~~~^^^^^^
+  File "D:\yanyi\pa-harness\runs\eps-prototype\_scratch_contacts.py", line 152, in main
+    row, _ = contact_stats(ma, mb)
+             ~~~~~~~~~~~~~^^^^^^^^
+  File "D:\yanyi\pa-harness\runs\eps-prototype\_scratch_contacts.py", line 104, in contact_stats
+    d[cand] = SurfaceIndex(mesh_b).distance(va[cand])
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "D:\yanyi\pa-harness\runs\eps-prototype\_scratch_contacts.py", line 80, in distance
+    dist, idx = self.tree.query(points[todo], k=take)
+                ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "scipy/spatial/_ckdtree.pyx", line 811, in scipy.spatial._ckdtree.cKDTree.query
+numpy._core._exceptions._ArrayMemoryError: Unable to allocate 24.1 GiB for an array with shape (395633, 8192) and data type float64

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pah"
+version = "0.1.0"
+description = "Physics-Aware Harness: evidence-before-repair loop for assemblable 3D parts"
+requires-python = ">=3.13"
+dependencies = [
+  # pinned to the versions the existing pipeline was validated against
+  "numpy==2.3.0",
+  "scipy==1.16.3",
+  "trimesh==5.1.0",
+  "rtree==1.4.1",
+  "shapely==2.2.0",
+  "manifold3d==3.5.4",
+  "fast_simplification==0.2.0",
+  "mujoco==3.17.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "pytest-cov>=5.0"]
+
+[project.scripts]
+pah = "pah.cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

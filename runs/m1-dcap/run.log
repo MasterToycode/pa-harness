@@ -1,0 +1,48 @@
+pinned runs\m1-min\rows.jsonl -> runs\m1-dcap\source-rows.jsonl
+targets: 238 edges over 71 assemblies; arms=('baseline', 'cap_only', 'variant'); 0 rows already on disk
+  [ 1/71] asm_000000 (3 edges)
+    baseline asm_000000:   6 OK                    wall=1.519051 src=file_const 1x    2.7s
+    cap_only asm_000000:   6 OK                    wall=1.519051 src=local_single_wall 1x    3.2s
+    variant  asm_000000:   6 OK                    wall=1.519051 src=local_single_wall 1x    3.3s
+    baseline asm_000000:   7 gap_too_wide          wall=0.993501 src=file_const 2x    0.1s
+    cap_only asm_000000:   7 gap_too_wide          wall=0.993501 src=local_single_wall 2x    0.1s
+    variant  asm_000000:   7 gap_too_wide          wall=0.993501 src=local_single_wall 2x    0.1s
+    baseline asm_000000:   8 gap_too_wide          wall=0.977856 src=file_const 2x    0.1s
+    cap_only asm_000000:   8 gap_too_wide          wall=0.977856 src=local_single_wall 2x    0.1s
+    variant  asm_000000:   8 gap_too_wide          wall=0.977856 src=local_single_wall 2x    0.1s
+  [ 2/71] asm_000001 (2 edges)
+    baseline asm_000001:  15 OK                    wall=5.857809 src=file_const 1x    9.7s
+    cap_only asm_000001:  15 OK                    wall=5.857809 src=local_single_wall 1x    8.2s
+    variant  asm_000001:  15 OK                    wall=5.857809 src=local_single_wall 1x    8.0s
+    baseline asm_000001:  18 OK                    wall=2.567888 src=file_const 2x    5.4s
+    cap_only asm_000001:  18 OK                    wall=2.567888 src=local_single_wall 2x    5.1s
+    variant  asm_000001:  18 OK                    wall=2.567888 src=local_single_wall 2x    5.0s
+  [ 3/71] asm_000002 (2 edges)
+    baseline asm_000002:  21 OK                    wall=4.378381 src=file_const 1x    4.7s
+    cap_only asm_000002:  21 OK                    wall=4.378381 src=local_single_wall 1x    3.9s
+    variant  asm_000002:  21 OK                    wall=4.378381 src=local_single_wall 1x    4.0s
+    baseline asm_000002:  25 OK                    wall=None src=file_const 1x    4.3s
+    cap_only asm_000002:  25 OK                    wall=None src=unmeasured 1x    4.3s
+    variant  asm_000002:  25 OK                    wall=None src=unmeasured 1x    4.3s
+  [ 4/71] asm_000003 (2 edges)
+    baseline asm_000003:  31 unreatable_too_small  wall=1.491982 src=file_const 2x    0.8s
+    cap_only asm_000003:  31 unreatable_too_small  wall=1.491982 src=local_single_wall 2x    0.8s
+    variant  asm_000003:  31 unreatable_too_small  wall=1.491982 src=local_single_wall 2x    0.6s
+    baseline asm_000003:  43 OK                    wall=27.567824 src=file_const 2x    1.0s
+    cap_only asm_000003:  43 OK                    wall=27.567824 src=local_single_wall 1x    0.8s
+    variant  asm_000003:  43 OK                    wall=27.567824 src=local_single_wall 1x    0.9s
+  [ 5/71] asm_000005 (2 edges)
+    baseline asm_000005:  51 OK                    wall=8.118556 src=file_const 2x   11.9s
+    cap_only asm_000005:  51 OK                    wall=8.118556 src=local_single_wall 1x   11.1s
+    variant  asm_000005:  51 OK                    wall=8.118556 src=local_single_wall 1x    9.6s
+    baseline asm_000005:  53 gap_too_wide          wall=None src=file_const 2x    0.6s
+    cap_only asm_000005:  53 gap_too_wide          wall=None src=unmeasured 2x    0.6s
+    variant  asm_000005:  53 gap_too_wide          wall=None src=unmeasured 2x    0.6s
+  [ 6/71] asm_000006 (2 edges)
+    baseline asm_000006:  58 OK                    wall=7.54744 src=file_const 1x    6.0s
+    cap_only asm_000006:  58 OK                    wall=7.54744 src=local_single_wall 1x    4.9s
+    variant  asm_000006:  58 OK                    wall=7.54744 src=local_single_wall 1x    5.4s
+    baseline asm_000006:  64 OK                    wall=5.864365 src=file_const 1x    5.9s
+    cap_only asm_000006:  64 OK                    wall=5.864365 src=local_single_wall 1x    5.9s
+    variant  asm_000006:  64 OK                    wall=5.864365 src=local_single_wall 1x    5.7s
+  [ 7/71] asm_000007 (1 edges)

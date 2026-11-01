@@ -1,0 +1,2231 @@
+{
+ "probe": "m1-repair",
+ "scope": "gap_too_wide + no_material_hit, 100 assemblies",
+ "source": {
+  "path": "runs\\m1-min\\source-rows.jsonl",
+  "sha256": "b7e0faf03f00c50652604fa7679ae26c4ae2b17441b9ef247db67cf62efc595b",
+  "rows": 705,
+  "pinned_copy": "runs\\m1-min\\source-rows.jsonl"
+ },
+ "config": {
+  "max_attempts": 3,
+  "attempts_used": 3,
+  "minutes": 42.0,
+  "edge_file": "D:\\yanyi\\rl_assembly\\research\\contact-graph-anchor\\edges_v2.json",
+  "geometry_root": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate",
+  "geometry_hashes": {
+   "targets": "sha256 of every target part before/after (parts-hash.jsonl)"
+  }
+ },
+ "edge_level": {
+  "gap_too_wide": {
+   "edges": 166,
+   "measured": 166,
+   "repaired": 62,
+   "rate": 0.3735,
+   "printable": 57,
+   "shift_mm_p50": 0.0
+  },
+  "no_material_hit": {
+   "edges": 72,
+   "measured": 72,
+   "repaired": 0,
+   "rate": 0.0,
+   "printable": 0,
+   "shift_mm_p50": null
+  },
+  "_total": {
+   "edges": 238,
+   "measured": 238,
+   "repaired": 62,
+   "rate": 0.2605,
+   "printable": 57,
+   "yield_before": 0.5574468085106383,
+   "yield_after": 0.6453900709219859
+  }
+ },
+ "assembly_level": {
+  "assemblies": 94,
+  "solvable_file": 53,
+  "solvable_before": 19,
+  "solvable_after": 20,
+  "reachable_before": 393,
+  "reachable_after": 432,
+  "parts_total": 696,
+  "flipped": [
+   "asm_000072"
+  ],
+  "lost": []
+ },
+ "assemblies": [
+  {
+   "case_id": "asm_000000",
+   "n_parts": 8,
+   "n_feasible_file": 6,
+   "n_ok_before": 2,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 8,
+    "largest": 7,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 8,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 8,
+    "largest": 4,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000001",
+   "n_parts": 7,
+   "n_feasible_file": 7,
+   "n_ok_before": 4,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000002",
+   "n_parts": 9,
+   "n_feasible_file": 6,
+   "n_ok_before": 4,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 9,
+    "largest": 7,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000003",
+   "n_parts": 16,
+   "n_feasible_file": 18,
+   "n_ok_before": 13,
+   "n_ok_after": 13,
+   "file": {
+    "n_parts": 16,
+    "largest": 12,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 16,
+    "largest": 8,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 16,
+    "largest": 8,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000004",
+   "n_parts": 3,
+   "n_feasible_file": 1,
+   "n_ok_before": 1,
+   "n_ok_after": 1,
+   "file": {
+    "n_parts": 3,
+    "largest": 2,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 2,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000005",
+   "n_parts": 7,
+   "n_feasible_file": 5,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000006",
+   "n_parts": 9,
+   "n_feasible_file": 12,
+   "n_ok_before": 10,
+   "n_ok_after": 10,
+   "file": {
+    "n_parts": 9,
+    "largest": 9,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 9,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 9,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000007",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000008",
+   "n_parts": 13,
+   "n_feasible_file": 14,
+   "n_ok_before": 4,
+   "n_ok_after": 7,
+   "file": {
+    "n_parts": 13,
+    "largest": 13,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 13,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 13,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000010",
+   "n_parts": 9,
+   "n_feasible_file": 10,
+   "n_ok_before": 8,
+   "n_ok_after": 8,
+   "file": {
+    "n_parts": 9,
+    "largest": 7,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000011",
+   "n_parts": 8,
+   "n_feasible_file": 8,
+   "n_ok_before": 7,
+   "n_ok_after": 7,
+   "file": {
+    "n_parts": 8,
+    "largest": 8,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 8,
+    "largest": 7,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 8,
+    "largest": 7,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000012",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000013",
+   "n_parts": 7,
+   "n_feasible_file": 8,
+   "n_ok_before": 4,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000014",
+   "n_parts": 9,
+   "n_feasible_file": 8,
+   "n_ok_before": 6,
+   "n_ok_after": 8,
+   "file": {
+    "n_parts": 9,
+    "largest": 7,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 7,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 7,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000016",
+   "n_parts": 10,
+   "n_feasible_file": 10,
+   "n_ok_before": 9,
+   "n_ok_after": 9,
+   "file": {
+    "n_parts": 10,
+    "largest": 9,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 10,
+    "largest": 9,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 10,
+    "largest": 9,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000017",
+   "n_parts": 5,
+   "n_feasible_file": 4,
+   "n_ok_before": 1,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 5,
+    "largest": 3,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000018",
+   "n_parts": 4,
+   "n_feasible_file": 3,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000019",
+   "n_parts": 9,
+   "n_feasible_file": 10,
+   "n_ok_before": 5,
+   "n_ok_after": 7,
+   "file": {
+    "n_parts": 9,
+    "largest": 8,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000020",
+   "n_parts": 10,
+   "n_feasible_file": 10,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 10,
+    "largest": 10,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 10,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 10,
+    "largest": 4,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000021",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000022",
+   "n_parts": 4,
+   "n_feasible_file": 3,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000023",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 1,
+   "n_ok_after": 1,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000024",
+   "n_parts": 3,
+   "n_feasible_file": 2,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000025",
+   "n_parts": 4,
+   "n_feasible_file": 5,
+   "n_ok_before": 5,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000026",
+   "n_parts": 15,
+   "n_feasible_file": 20,
+   "n_ok_before": 9,
+   "n_ok_after": 12,
+   "file": {
+    "n_parts": 15,
+    "largest": 11,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 15,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 15,
+    "largest": 9,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000027",
+   "n_parts": 13,
+   "n_feasible_file": 15,
+   "n_ok_before": 11,
+   "n_ok_after": 11,
+   "file": {
+    "n_parts": 13,
+    "largest": 13,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 13,
+    "largest": 10,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 13,
+    "largest": 10,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000028",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 1,
+   "n_ok_after": 1,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000030",
+   "n_parts": 14,
+   "n_feasible_file": 16,
+   "n_ok_before": 7,
+   "n_ok_after": 11,
+   "file": {
+    "n_parts": 14,
+    "largest": 12,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 14,
+    "largest": 8,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 14,
+    "largest": 9,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000031",
+   "n_parts": 7,
+   "n_feasible_file": 8,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000032",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000033",
+   "n_parts": 7,
+   "n_feasible_file": 6,
+   "n_ok_before": 4,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000034",
+   "n_parts": 8,
+   "n_feasible_file": 7,
+   "n_ok_before": 6,
+   "n_ok_after": 6,
+   "file": {
+    "n_parts": 8,
+    "largest": 7,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 8,
+    "largest": 6,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 8,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000035",
+   "n_parts": 7,
+   "n_feasible_file": 9,
+   "n_ok_before": 6,
+   "n_ok_after": 7,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000036",
+   "n_parts": 11,
+   "n_feasible_file": 15,
+   "n_ok_before": 6,
+   "n_ok_after": 6,
+   "file": {
+    "n_parts": 11,
+    "largest": 11,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 11,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 11,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000037",
+   "n_parts": 5,
+   "n_feasible_file": 6,
+   "n_ok_before": 4,
+   "n_ok_after": 4,
+   "file": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000038",
+   "n_parts": 4,
+   "n_feasible_file": 4,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000039",
+   "n_parts": 14,
+   "n_feasible_file": 15,
+   "n_ok_before": 11,
+   "n_ok_after": 11,
+   "file": {
+    "n_parts": 14,
+    "largest": 12,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 14,
+    "largest": 9,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 14,
+    "largest": 9,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000040",
+   "n_parts": 7,
+   "n_feasible_file": 5,
+   "n_ok_before": 3,
+   "n_ok_after": 4,
+   "file": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000041",
+   "n_parts": 14,
+   "n_feasible_file": 12,
+   "n_ok_before": 5,
+   "n_ok_after": 6,
+   "file": {
+    "n_parts": 14,
+    "largest": 13,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 14,
+    "largest": 6,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 14,
+    "largest": 7,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000042",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000043",
+   "n_parts": 8,
+   "n_feasible_file": 4,
+   "n_ok_before": 1,
+   "n_ok_after": 1,
+   "file": {
+    "n_parts": 8,
+    "largest": 5,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 8,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 8,
+    "largest": 2,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000044",
+   "n_parts": 14,
+   "n_feasible_file": 17,
+   "n_ok_before": 9,
+   "n_ok_after": 10,
+   "file": {
+    "n_parts": 14,
+    "largest": 14,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 14,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 14,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000045",
+   "n_parts": 7,
+   "n_feasible_file": 12,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000046",
+   "n_parts": 11,
+   "n_feasible_file": 18,
+   "n_ok_before": 13,
+   "n_ok_after": 16,
+   "file": {
+    "n_parts": 11,
+    "largest": 10,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 11,
+    "largest": 10,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 11,
+    "largest": 10,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000047",
+   "n_parts": 7,
+   "n_feasible_file": 7,
+   "n_ok_before": 7,
+   "n_ok_after": 7,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000048",
+   "n_parts": 9,
+   "n_feasible_file": 10,
+   "n_ok_before": 4,
+   "n_ok_after": 6,
+   "file": {
+    "n_parts": 9,
+    "largest": 9,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000049",
+   "n_parts": 10,
+   "n_feasible_file": 20,
+   "n_ok_before": 19,
+   "n_ok_after": 19,
+   "file": {
+    "n_parts": 10,
+    "largest": 10,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 10,
+    "largest": 10,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 10,
+    "largest": 10,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000050",
+   "n_parts": 4,
+   "n_feasible_file": 1,
+   "n_ok_before": 1,
+   "n_ok_after": 1,
+   "file": {
+    "n_parts": 4,
+    "largest": 2,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 2,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000051",
+   "n_parts": 8,
+   "n_feasible_file": 7,
+   "n_ok_before": 5,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 8,
+    "largest": 8,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 8,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 8,
+    "largest": 4,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000052",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 1,
+   "n_ok_after": 1,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000053",
+   "n_parts": 12,
+   "n_feasible_file": 15,
+   "n_ok_before": 5,
+   "n_ok_after": 6,
+   "file": {
+    "n_parts": 12,
+    "largest": 12,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 12,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 12,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000054",
+   "n_parts": 6,
+   "n_feasible_file": 4,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 6,
+    "largest": 5,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 6,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 6,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000055",
+   "n_parts": 7,
+   "n_feasible_file": 9,
+   "n_ok_before": 8,
+   "n_ok_after": 9,
+   "file": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000056",
+   "n_parts": 6,
+   "n_feasible_file": 4,
+   "n_ok_before": 4,
+   "n_ok_after": 4,
+   "file": {
+    "n_parts": 6,
+    "largest": 5,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 6,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 6,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000057",
+   "n_parts": 5,
+   "n_feasible_file": 8,
+   "n_ok_before": 5,
+   "n_ok_after": 7,
+   "file": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000058",
+   "n_parts": 12,
+   "n_feasible_file": 16,
+   "n_ok_before": 13,
+   "n_ok_after": 13,
+   "file": {
+    "n_parts": 12,
+    "largest": 11,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 12,
+    "largest": 10,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 12,
+    "largest": 10,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000059",
+   "n_parts": 6,
+   "n_feasible_file": 3,
+   "n_ok_before": 1,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 6,
+    "largest": 4,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 6,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 6,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000060",
+   "n_parts": 3,
+   "n_feasible_file": 2,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000061",
+   "n_parts": 3,
+   "n_feasible_file": 2,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000062",
+   "n_parts": 14,
+   "n_feasible_file": 18,
+   "n_ok_before": 8,
+   "n_ok_after": 15,
+   "file": {
+    "n_parts": 14,
+    "largest": 9,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 14,
+    "largest": 9,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 14,
+    "largest": 9,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000063",
+   "n_parts": 3,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 3,
+    "largest": 2,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000064",
+   "n_parts": 9,
+   "n_feasible_file": 3,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 9,
+    "largest": 4,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000066",
+   "n_parts": 3,
+   "n_feasible_file": 3,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000067",
+   "n_parts": 2,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 2,
+    "largest": 2,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 2,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000068",
+   "n_parts": 13,
+   "n_feasible_file": 15,
+   "n_ok_before": 4,
+   "n_ok_after": 9,
+   "file": {
+    "n_parts": 13,
+    "largest": 11,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 13,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 13,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000069",
+   "n_parts": 4,
+   "n_feasible_file": 3,
+   "n_ok_before": 0,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000070",
+   "n_parts": 5,
+   "n_feasible_file": 5,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000071",
+   "n_parts": 9,
+   "n_feasible_file": 15,
+   "n_ok_before": 4,
+   "n_ok_after": 4,
+   "file": {
+    "n_parts": 9,
+    "largest": 9,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000072",
+   "n_parts": 6,
+   "n_feasible_file": 5,
+   "n_ok_before": 4,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 6,
+    "largest": 6,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 6,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 6,
+    "largest": 6,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000073",
+   "n_parts": 16,
+   "n_feasible_file": 14,
+   "n_ok_before": 12,
+   "n_ok_after": 13,
+   "file": {
+    "n_parts": 16,
+    "largest": 14,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 16,
+    "largest": 11,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 16,
+    "largest": 12,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000074",
+   "n_parts": 8,
+   "n_feasible_file": 3,
+   "n_ok_before": 0,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 8,
+    "largest": 4,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 8,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 8,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000075",
+   "n_parts": 10,
+   "n_feasible_file": 17,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 10,
+    "largest": 10,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 10,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 10,
+    "largest": 2,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000076",
+   "n_parts": 4,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 4,
+    "largest": 2,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000077",
+   "n_parts": 6,
+   "n_feasible_file": 3,
+   "n_ok_before": 1,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 6,
+    "largest": 4,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 6,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 6,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000078",
+   "n_parts": 7,
+   "n_feasible_file": 6,
+   "n_ok_before": 4,
+   "n_ok_after": 4,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 4,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000079",
+   "n_parts": 5,
+   "n_feasible_file": 7,
+   "n_ok_before": 7,
+   "n_ok_after": 7,
+   "file": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000080",
+   "n_parts": 10,
+   "n_feasible_file": 12,
+   "n_ok_before": 4,
+   "n_ok_after": 6,
+   "file": {
+    "n_parts": 10,
+    "largest": 10,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 10,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 10,
+    "largest": 7,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000081",
+   "n_parts": 3,
+   "n_feasible_file": 1,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 3,
+    "largest": 2,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000082",
+   "n_parts": 5,
+   "n_feasible_file": 7,
+   "n_ok_before": 5,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000083",
+   "n_parts": 5,
+   "n_feasible_file": 2,
+   "n_ok_before": 1,
+   "n_ok_after": 1,
+   "file": {
+    "n_parts": 5,
+    "largest": 3,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 2,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000084",
+   "n_parts": 9,
+   "n_feasible_file": 8,
+   "n_ok_before": 2,
+   "n_ok_after": 5,
+   "file": {
+    "n_parts": 9,
+    "largest": 9,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000085",
+   "n_parts": 9,
+   "n_feasible_file": 6,
+   "n_ok_before": 6,
+   "n_ok_after": 6,
+   "file": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 5,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000087",
+   "n_parts": 15,
+   "n_feasible_file": 27,
+   "n_ok_before": 1,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 15,
+    "largest": 15,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 15,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 15,
+    "largest": 2,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000088",
+   "n_parts": 6,
+   "n_feasible_file": 4,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 6,
+    "largest": 5,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 6,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 6,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000090",
+   "n_parts": 3,
+   "n_feasible_file": 2,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 3,
+    "largest": 3,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000091",
+   "n_parts": 5,
+   "n_feasible_file": 3,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 5,
+    "largest": 4,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 1,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000092",
+   "n_parts": 4,
+   "n_feasible_file": 5,
+   "n_ok_before": 3,
+   "n_ok_after": 3,
+   "file": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 4,
+    "solvable": true
+   }
+  },
+  {
+   "case_id": "asm_000093",
+   "n_parts": 16,
+   "n_feasible_file": 14,
+   "n_ok_before": 13,
+   "n_ok_after": 14,
+   "file": {
+    "n_parts": 16,
+    "largest": 14,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 16,
+    "largest": 11,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 16,
+    "largest": 14,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000094",
+   "n_parts": 4,
+   "n_feasible_file": 2,
+   "n_ok_before": 1,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 4,
+    "largest": 2,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 4,
+    "largest": 2,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 4,
+    "largest": 2,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000095",
+   "n_parts": 9,
+   "n_feasible_file": 9,
+   "n_ok_before": 4,
+   "n_ok_after": 4,
+   "file": {
+    "n_parts": 9,
+    "largest": 9,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 4,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 4,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000096",
+   "n_parts": 9,
+   "n_feasible_file": 2,
+   "n_ok_before": 2,
+   "n_ok_after": 2,
+   "file": {
+    "n_parts": 9,
+    "largest": 3,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 9,
+    "largest": 3,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 9,
+    "largest": 3,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000097",
+   "n_parts": 7,
+   "n_feasible_file": 16,
+   "n_ok_before": 9,
+   "n_ok_after": 9,
+   "file": {
+    "n_parts": 7,
+    "largest": 7,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 7,
+    "largest": 6,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000098",
+   "n_parts": 14,
+   "n_feasible_file": 10,
+   "n_ok_before": 8,
+   "n_ok_after": 9,
+   "file": {
+    "n_parts": 14,
+    "largest": 8,
+    "solvable": false
+   },
+   "before": {
+    "n_parts": 14,
+    "largest": 8,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 14,
+    "largest": 8,
+    "solvable": false
+   }
+  },
+  {
+   "case_id": "asm_000099",
+   "n_parts": 5,
+   "n_feasible_file": 11,
+   "n_ok_before": 0,
+   "n_ok_after": 0,
+   "file": {
+    "n_parts": 5,
+    "largest": 5,
+    "solvable": true
+   },
+   "before": {
+    "n_parts": 5,
+    "largest": 1,
+    "solvable": false
+   },
+   "after": {
+    "n_parts": 5,
+    "largest": 1,
+    "solvable": false
+   }
+  }
+ ],
+ "cost": {
+  "edges_measured": 238,
+  "attempts_total": 402,
+  "build_calls": 402,
+  "measure_calls": 3213,
+  "attempts_hist": {
+   "0": 7,
+   "1": 62,
+   "2": 167,
+   "3": 2
+  },
+  "wall_s_total": 1098.8,
+  "wall_s_per_edge_p50": 1.84855,
+  "wall_s_per_edge_p95": 17.412,
+  "wall_s_per_edge_sum": 1060.7,
+  "by_operator": {
+   "resize_connector": {
+    "attempted": 227,
+    "succeeded": 57,
+    "hit_rate": 0.2511
+   },
+   "relocate_connector": {
+    "attempted": 173,
+    "succeeded": 5,
+    "hit_rate": 0.0289
+   },
+   "swap_family": {
+    "attempted": 2,
+    "succeeded": 0,
+    "hit_rate": 0.0
+   }
+  }
+ },
+ "residual": {
+  "unrepaired": 176,
+  "by_reason": {
+   "no_material_hit": 95,
+   "gap_too_wide": 67,
+   "unreatable_too_small": 7,
+   "degenerate_other": 5,
+   "bool_failed": 1,
+   "socket_breaks_wall": 1
+  },
+  "by_stopped": {
+   "rungs": 161,
+   "terminal": 8,
+   "no_plan": 7
+  },
+  "by_src_code": {
+   "gap_too_wide": 104,
+   "no_material_hit": 72
+  },
+  "by_last_operator": {
+   "relocate_connector": 107,
+   "resize_connector": 62,
+   "": 7
+  },
+  "dead_ends": {
+   "no_material_hit -> no_material_hit": 60,
+   "gap_too_wide -> gap_too_wide": 59,
+   "gap_too_wide -> no_material_hit": 35,
+   "no_material_hit -> gap_too_wide": 8,
+   "gap_too_wide -> degenerate_other": 5,
+   "no_material_hit -> unreatable_too_small": 4,
+   "gap_too_wide -> unreatable_too_small": 3,
+   "gap_too_wide -> bool_failed": 1,
+   "gap_too_wide -> socket_breaks_wall": 1
+  }
+ },
+ "printability": {
+  "repaired": 62,
+  "printable": 57,
+  "r_mm_min": 0.25,
+  "r_mm_p50": 0.615663,
+  "wall_remaining_mm_p50": 0.450936,
+  "wall_short": [
+   "asm_000035:304",
+   "asm_000046:410",
+   "asm_000048:443",
+   "asm_000062:558",
+   "asm_000062:560"
+  ]
+ },
+ "untouched": {
+  "assemblies_hashed": 71,
+  "assemblies_with_changed_parts": 0,
+  "changed": {},
+  "target_pairs": 238
+ },
+ "gate_calibration": {
+  "attempts_checked": 402,
+  "agree": 297,
+  "disagree": 105,
+  "false_positive": 103,
+  "false_negative": 2
+ },
+ "complete": true,
+ "edges_written": 238,
+ "edges_new_this_run": 238,
+ "targets": 238,
+ "seconds": 1098.8
+}

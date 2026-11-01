@@ -1,0 +1,143 @@
+{
+ "probe": "connector",
+ "split": "feasible",
+ "scope": "gold",
+ "unit_mm_rule": "scale",
+ "edge_file": "D:\\yanyi\\rl_assembly\\research\\contact-graph-anchor\\edges_v2.json",
+ "geometry_root": "D:\\yanyi\\rl_assembly\\data\\assemblies_pre_decimate",
+ "edges_total": 953,
+ "edges_in_split": 705,
+ "assemblies": 93,
+ "ran": 705,
+ "complete": true,
+ "success": 393,
+ "rate": 0.557447,
+ "unreatable_too_small": 29,
+ "host_geometry_unreliable": 0,
+ "adapter_feasible": 676,
+ "codes": {
+  "gap_too_wide": 166,
+  "no_material_hit": 72,
+  "unreatable_too_small": 29,
+  "socket_breaks_wall": 17,
+  "degenerate_other": 17,
+  "peg_detached": 8,
+  "degenerate_tangent": 3
+ },
+ "success_original": 393,
+ "success_ivr_validated": {
+  "lo": 393,
+  "hi": 393
+ },
+ "n_unknown": 0,
+ "ivr": {
+  "level": "exact",
+  "field": "ivr_exact",
+  "eps": 1e-06,
+  "checked": 393,
+  "missing": 0,
+  "known": 393,
+  "over_eps": 0,
+  "methods": {
+   "manifold": 360,
+   "bbox": 33
+  }
+ },
+ "retried_n": 2,
+ "oom_n": 0,
+ "gold": {
+  "feasible": 705,
+  "success": 388,
+  "rate": 0.55
+ },
+ "delta": {
+  "feasible": 0,
+  "success": 5,
+  "rate": 0.007447
+ },
+ "edge_diff": {
+  "available": true,
+  "compared": 705,
+  "mismatches": 5,
+  "details": [
+   {
+    "case_id": "asm_000097",
+    "edge_id": 912,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 56.0 MiB for an array with shape (2, 3671268) and data type uint64)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 916,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 14.0 MiB for an array with shape (1223756, 3) and data type uint32)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 917,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 14.0 MiB for an array with shape (1223756, 3) and data type uint32)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 919,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 14.0 MiB for an array with shape (1223756, 3) and data type uint32)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 920,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 56.0 MiB for an array with shape (2, 3671268) and data type uint64)"
+   }
+  ],
+  "examples": [
+   {
+    "case_id": "asm_000097",
+    "edge_id": 912,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 56.0 MiB for an array with shape (2, 3671268) and data type uint64)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 916,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 14.0 MiB for an array with shape (1223756, 3) and data type uint32)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 917,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 14.0 MiB for an array with shape (1223756, 3) and data type uint32)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 919,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 14.0 MiB for an array with shape (1223756, 3) and data type uint32)"
+   },
+   {
+    "case_id": "asm_000097",
+    "edge_id": 920,
+    "adapter": "ok",
+    "gold": "fail",
+    "gold_detail": "exception:MemoryError(Unable to allocate 56.0 MiB for an array with shape (2, 3671268) and data type uint64)"
+   }
+  ]
+ },
+ "seconds": 1217.6,
+ "verdict": "reproduced-modulo-environment",
+ "adjusted_success": 388,
+ "environment_edges": 5,
+ "reproduced": true,
+ "report_only": false
+}
