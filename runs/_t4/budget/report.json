@@ -1,0 +1,200 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\_t4\\budget",
+    "policy": "rule",
+    "rounds_requested": 3,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.48
+  },
+  "ticket": {
+    "id": "0fe9a7277f2b970fdfdfa3a7f9f0334a",
+    "outcome": "infeasible",
+    "reason": "geometry cycle"
+  },
+  "episode": {
+    "verdict": "infeasible",
+    "reason": "geometry cycle",
+    "rounds": 3
+  },
+  "budget": {
+    "rounds": {
+      "budget": 3,
+      "used": 3,
+      "left": 0
+    },
+    "geom_calls": {
+      "budget": 24,
+      "charged": 22,
+      "left": 2
+    },
+    "sim_calls": {
+      "budget": 12,
+      "charged": 3,
+      "left": 9
+    },
+    "verifier_spend": {
+      "geom_calls": 19,
+      "sim_calls": 3
+    },
+    "rounds_produced": 3,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "budget-probe",
+    "kind": "peg_hole",
+    "requirement": "",
+    "initial_content_key": "sha256:73c470f336ee73204b308460fdb8716d",
+    "final_content_key": "sha256:f2e1905d4cf23bc2d015395ab9c86ad1",
+    "initial_clearance_mm": 0.1,
+    "final_clearance_mm": 0.35,
+    "final_revision": 7,
+    "provenance": {},
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "insufficient_clearance -> set_clearance",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "below_min_wall"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "geom_hash": "199b28b15da66624f4f828db99a8770a"
+    },
+    {
+      "index": 1,
+      "operator": "switch_connector",
+      "params": {
+        "interface_id": "iface_0",
+        "kind": "snap_fit",
+        "params": {},
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "below_min_wall -> switch_connector",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "below_min_wall"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 6,
+      "sim_calls": 0,
+      "geom_hash": "d31cc79f570a1c4318308fe0d710a5d0"
+    },
+    {
+      "index": 2,
+      "operator": "switch_connector",
+      "params": {
+        "interface_id": "iface_0",
+        "kind": "peg_hole",
+        "params": {},
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "below_min_wall -> switch_connector",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "below_min_wall"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 5,
+      "sim_calls": 1,
+      "geom_hash": "199b28b15da66624f4f828db99a8770a"
+    }
+  ],
+  "counts": {
+    "repaired_by_policy": 0,
+    "physical_failures_final": 1,
+    "final_codes": [
+      "below_min_wall"
+    ],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 1,
+    "not_evaluated_by": [
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge"
+    }
+  },
+  "trace": {
+    "path": "runs\\_t4\\budget\\trace.jsonl",
+    "rows": 17,
+    "replay_hashes": [
+      "199b28b15da66624f4f828db99a8770a",
+      "d31cc79f570a1c4318308fe0d710a5d0",
+      "199b28b15da66624f4f828db99a8770a"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\_t4\\budget\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\_t4\\budget\\geometry\\body.stl",
+        "hash": "sha256:08f1b37bbefbb3d57393a95bf0ce9681",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\_t4\\budget\\geometry\\insert.stl",
+        "hash": "sha256:8169eac7cb14127041a5933a5a3a7cf3",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

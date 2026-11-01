@@ -92,7 +92,16 @@ def materialize(spec: DesignSpec, out_dir: Path) -> MaterializedDesign:
         target.write_bytes(built.meshes[part.id].export(file_type="stl"))
         paths[part.id] = str(target)
 
-    assembly = assembly_from_spec(spec=spec, geometry_paths=paths)
+    # The axis and the approach are recorded on the assembly as well as returned,
+    # so a consumer that only has the assembly (`view_of` in the cascade, a CLI
+    # report, a resumed episode) reads the kind's real insertion facts instead of
+    # falling back to +Z. Dovetail is why: it slides along +X.
+    assembly = assembly_from_spec(
+        spec=spec,
+        geometry_paths=paths,
+        mate_axis=built.mate_axis,
+        approach_mm=built.approach_mm,
+    )
     return MaterializedDesign(
         spec=spec,
         assembly=assembly,

@@ -18,6 +18,12 @@ Local frames (the base class puts both in world coordinates)
   the slide begins and its Z is the body's top surface; `approach_mm` then steps
   the insert back out of the pocket along +X.
 
+Seated, the tongue's leading face is one engagement in from the body's +X face and
+the pocket floor is `clearance` further in, so the origin lands at
+`(size_x / 2 - engage, 0, +size_z / 2)` in the body's local frame -- the datum
+`seated_pose_mm` reports, and where a `switch_connector` has to move an insert it
+just re-kinded.
+
 Clearance
 ---------
 `clearance_mm` is per side, and it is applied both ways: the tongue is
@@ -51,7 +57,7 @@ import numpy as np
 import trimesh
 
 from pah.design.connectors import ConnectorBuilderBase, blank_box
-from pah.design.spec import PartSpec, Vec3
+from pah.design.spec import DesignSpec, PartSpec, Vec3
 
 __all__ = ["DovetailBuilder"]
 
@@ -142,3 +148,14 @@ class DovetailBuilder(ConnectorBuilderBase):
         )
         insert_mesh = trimesh.boolean.union([tongue, handle], engine="manifold")
         return body_mesh, insert_mesh
+
+    def _seat_point_mm(self, spec: DesignSpec) -> Vec3:
+        """The tongue's leading face on the top plane, in the body's local frame.
+
+        The pocket opens at the body's +X face and is `engage + clearance` long,
+        so the tongue's leading face -- held off the pocket floor by `clearance`
+        -- ends up exactly `engage` in from that face.
+        """
+        params = spec.interface.validated_params()
+        size_x, _, size_z = (float(value) for value in spec.body.size_mm)
+        return (size_x / 2.0 - params.engage_mm, 0.0, size_z / 2.0)

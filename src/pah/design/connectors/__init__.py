@@ -64,8 +64,8 @@ def register_builder(builder: ConnectorBuilder) -> None:
     """
     if not isinstance(builder, ConnectorBuilder):
         raise TypeError(
-            f"{type(builder).__name__} does not implement ConnectorBuilder "
-            "(needs kind, params_model, clearance_mm and build)"
+            f"{type(builder).__name__} does not implement ConnectorBuilder (needs "
+            "kind, params_model, clearance_mm, seated_pose_mm and build)"
         )
     kind = builder.kind
     if not kind:
@@ -156,6 +156,19 @@ def world_axis(part: PartSpec, axis: Vec3) -> Vec3:
     return tuple(float(component / length) for component in vector)
 
 
+def world_point(part: PartSpec, point: Vec3) -> Vec3:
+    """A point written in the part's local frame, as world coordinates.
+
+    The companion to `world_axis` for the one place a *point* is contracted: the
+    seat datum a `switch_connector` has to move an insert to. Rotating or shifting
+    the body moves the datum with it, so a kind states the datum once, in the frame
+    the feature was cut in.
+    """
+    matrix = part_matrix(part)
+    local = np.array([float(point[0]), float(point[1]), float(point[2]), 1.0])
+    return tuple(float(component) for component in (matrix @ local)[:3])
+
+
 # --------------------------------------------------------------------------- #
 # The base every builtin kind shares
 # --------------------------------------------------------------------------- #
@@ -216,6 +229,36 @@ class ConnectorBuilderBase(abc.ABC):
         `params` is the kind's validated model, not a dict: the base validates it
         once and hands over the typed numbers.
         """
+
+    @abc.abstractmethod
+    def _seat_point_mm(self, spec: DesignSpec) -> Vec3:
+        """The seat datum, in the **body's** local frame.
+
+        Where the insert's origin lands when it is fully seated. Body-local, not
+        world, because `pose_mm` and the body's rotation move the datum with the
+        feature; stating it in the frame the feature was cut in means a rotated or
+        shifted body needs no second seating rule.
+        """
+
+    def seated_pose_mm(self, spec: DesignSpec) -> Vec3:
+        """Where the insert's origin sits when fully seated, in world mm.
+
+        A *kind switch* (`switch_connector`) and a fresh design (`pah design new`)
+        both have to place an insert, and only the kind knows where. Measured cost
+        of getting this wrong: a peg_hole -> dovetail switch left the insert at the
+        peg's seated pose and the seated intersection became 1800 mm3, a blocking
+        false positive caused by geometry the design never asked for.
+
+        Only the translation is returned: the protocol's answer is a point, and an
+        insert rotated differently from its body is a design mistake the verifiers
+        measure, not something this helper should paper over.
+        """
+        if spec.interface.kind != self.kind:
+            raise ValueError(
+                f"builder {type(self).__name__} seats {self.kind!r}, but the spec's "
+                f"interface {spec.interface.id!r} is {spec.interface.kind!r}"
+            )
+        return world_point(spec.body, self._seat_point_mm(spec))
 
     def build(self, spec: DesignSpec) -> ConnectorGeometry:
         """`spec`'s interface as two world-frame solids plus its insertion axis."""

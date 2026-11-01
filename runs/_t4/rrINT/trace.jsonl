@@ -1,0 +1,14 @@
+{"seq": 1, "at": "2026-11-01T13:37:01.989975+00:00", "kind": "episode.begin", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "policy": "rule", "assembly": "deb5c5352fc0f4948a82b5b82bbcced1"}
+{"seq": 2, "at": "2026-11-01T13:37:02.146074+00:00", "kind": "verify", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "phase": "before", "codes": ["insufficient_clearance", "below_min_wall"], "physical": 2, "verified": true}
+{"seq": 3, "at": "2026-11-01T13:37:02.146542+00:00", "kind": "round.begin", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "round": 0, "operator": "set_clearance", "targets": ["body", "insert"], "policy": "rule"}
+{"seq": 4, "at": "2026-11-01T13:37:02.149003+00:00", "kind": "round.stage", "round": 0, "stage": "materialized", "spec": "sha256:f2e1905d4cf23bc2d015395ab9c86ad1", "revision": 3}
+{"seq": 5, "at": "2026-11-01T13:37:02.301461+00:00", "kind": "verify", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "phase": "after", "codes": ["below_min_wall"], "physical": 1, "verified": true}
+{"seq": 6, "at": "2026-11-01T13:37:02.302735+00:00", "kind": "round.close", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "round": 0, "verdict": "fail", "geom_calls": 1, "sim_calls": 0, "geom_hash": "199b28b15da66624f4f828db99a8770a"}
+{"seq": 7, "at": "2026-11-01T13:37:04.651989+00:00", "kind": "episode.begin", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "policy": "rule", "assembly": "deb5c5352fc0f4948a82b5b82bbcced1"}
+{"seq": 8, "at": "2026-11-01T13:37:04.812289+00:00", "kind": "verify", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "phase": "before", "codes": ["below_min_wall"], "physical": 1, "verified": true}
+{"seq": 9, "at": "2026-11-01T13:37:04.812961+00:00", "kind": "round.begin", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "round": 1, "operator": "switch_connector", "targets": ["body", "insert"], "policy": "rule"}
+{"seq": 10, "at": "2026-11-01T13:37:04.815396+00:00", "kind": "round.stage", "round": 1, "stage": "materialized", "spec": "sha256:78836afa2f2ae04393205100426abfd4", "revision": 5}
+{"seq": 11, "at": "2026-11-01T13:37:04.836183+00:00", "kind": "verify", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "phase": "after", "codes": ["below_min_wall"], "physical": 1, "verified": true}
+{"seq": 12, "at": "2026-11-01T13:37:04.837496+00:00", "kind": "round.close", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "round": 1, "verdict": "fail", "geom_calls": 1, "sim_calls": 0, "geom_hash": "d31cc79f570a1c4318308fe0d710a5d0"}
+{"seq": 13, "at": "2026-11-01T13:37:04.837578+00:00", "kind": "verify", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "phase": "before", "codes": ["below_min_wall"], "physical": 1, "verified": true, "cached": true}
+{"seq": 14, "at": "2026-11-01T13:37:04.838343+00:00", "kind": "ticket.end", "ticket": "deb5c5352fc0f4948a82b5b82bbcced1", "outcome": "exhausted", "reason": "budget spent", "rounds": 2, "geom_calls": 22, "sim_calls": 3}

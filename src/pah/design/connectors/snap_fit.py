@@ -10,6 +10,10 @@ Local frames (the base class puts both in world coordinates)
   `hook_w_mm` across and `hook_h_mm` tall; the cantilever beam (`beam_thk_mm` in
   X, `hook_w_mm` in Y, `beam_len_mm` long) rises from the hook's top face.
 
+Seated, the hook's top face bears on the chamber's ceiling (one `play` of
+clearance below it), so the insert's origin lands `engage + hook_h` below the
+body's top face on the slot axis -- that is the datum `seated_pose_mm` reports.
+
 Approximation, stated plainly
 -----------------------------
 The insert is a **rigid** body, drawn in the shape it has *after* it has sprung
@@ -38,7 +42,7 @@ from __future__ import annotations
 import trimesh
 
 from pah.design.connectors import ConnectorBuilderBase, blank_box
-from pah.design.spec import PartSpec, Vec3
+from pah.design.spec import DesignSpec, PartSpec, Vec3
 
 __all__ = ["SnapFitBuilder"]
 
@@ -87,3 +91,17 @@ class SnapFitBuilder(ConnectorBuilderBase):
         )
         insert_mesh = trimesh.boolean.union([hook, beam], engine="manifold")
         return body_mesh, insert_mesh
+
+    def _seat_point_mm(self, spec: DesignSpec) -> Vec3:
+        """The chamber's floor line, in the body's local frame.
+
+        The hook's top face bears on the chamber's ceiling, so the origin (the
+        hook's bottom) sits `hook_h` below the ceiling and therefore
+        `engage + hook_h` below the body's top face.
+        """
+        params = spec.interface.validated_params()
+        return (
+            0.0,
+            0.0,
+            float(spec.body.size_mm[2]) / 2.0 - params.engage_mm - params.hook_h_mm,
+        )

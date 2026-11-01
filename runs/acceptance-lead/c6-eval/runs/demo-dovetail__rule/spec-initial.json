@@ -1,0 +1,77 @@
+{
+  "spec_id": "demo-dovetail",
+  "requirement": "A 10 mm trapezoidal tongue with a 12 degree flank angle should slide 20 mm into the +X face of a 60x40x16 plate and be held by the flanks and the 6 mm-deep groove. The load is along X, so the part slides in rather than pressing in.",
+  "parts": [
+    {
+      "id": "body",
+      "role": "body",
+      "size_mm": [
+        60.0,
+        40.0,
+        16.0
+      ],
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    },
+    {
+      "id": "insert",
+      "role": "insert",
+      "size_mm": [
+        20.0,
+        30.0,
+        12.0
+      ],
+      "pose_mm": [
+        10.0,
+        0.0,
+        8.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "iface_0",
+      "kind": "dovetail",
+      "a": "body",
+      "b": "insert",
+      "params": {
+        "width_mm": 10.0,
+        "depth_mm": 6.0,
+        "angle_deg": 12.0,
+        "clearance_mm": 0.1,
+        "engage_mm": 20.0,
+        "approach_mm": 22.0
+      }
+    }
+  ],
+  "constraints": {
+    "min_clearance_mm": 0.1,
+    "max_clearance_mm": 0.6,
+    "min_wall_mm": 1.2,
+    "process": "fdm",
+    "target_fit": "slip",
+    "print_orientation_deg": null
+  },
+  "revision": 1,
+  "provenance": {
+    "interface_kind": "fixture:hand",
+    "params": "fixture:hand",
+    "why": "stock dovetail numbers; the approach spans the full slide so the path check is meaningful"
+  },
+  "api_version": "1"
+}

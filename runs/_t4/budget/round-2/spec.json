@@ -1,0 +1,76 @@
+{
+  "spec_id": "budget-probe",
+  "requirement": "",
+  "parts": [
+    {
+      "id": "body",
+      "role": "body",
+      "size_mm": [
+        60.0,
+        40.0,
+        12.0
+      ],
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    },
+    {
+      "id": "insert",
+      "role": "insert",
+      "size_mm": [
+        22.0,
+        22.0,
+        20.0
+      ],
+      "pose_mm": [
+        0.0,
+        0.0,
+        -2.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "iface_0",
+      "kind": "peg_hole",
+      "a": "body",
+      "b": "insert",
+      "params": {
+        "d_peg_mm": 10.0,
+        "d_hole_mm": 10.7,
+        "engage_mm": 8.0,
+        "approach_mm": 10.0,
+        "peg_len_mm": null,
+        "feature_xy_mm": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  ],
+  "constraints": {
+    "min_clearance_mm": 0.1,
+    "max_clearance_mm": 0.6,
+    "min_wall_mm": 29.0,
+    "process": "fdm",
+    "target_fit": "slip",
+    "print_orientation_deg": null
+  },
+  "revision": 7,
+  "provenance": {},
+  "api_version": "1"
+}

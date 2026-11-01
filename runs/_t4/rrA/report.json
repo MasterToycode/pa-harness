@@ -1,0 +1,177 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\_t4\\rrA",
+    "policy": "rule",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.353
+  },
+  "ticket": {
+    "id": "deb5c5352fc0f4948a82b5b82bbcced1",
+    "outcome": "exhausted",
+    "reason": "budget spent"
+  },
+  "episode": {
+    "verdict": "exhausted",
+    "reason": "budget spent",
+    "rounds": 2
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 2,
+      "left": 0
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 17,
+      "left": 0
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 2,
+      "left": 6
+    },
+    "verifier_spend": {
+      "geom_calls": 15,
+      "sim_calls": 2
+    },
+    "rounds_produced": 2,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "resume-probe",
+    "kind": "snap_fit",
+    "requirement": "",
+    "initial_content_key": "sha256:73c470f336ee73204b308460fdb8716d",
+    "final_content_key": "sha256:78836afa2f2ae04393205100426abfd4",
+    "initial_clearance_mm": 0.1,
+    "final_clearance_mm": 0.35,
+    "final_revision": 5,
+    "provenance": {},
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "insufficient_clearance -> set_clearance",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "below_min_wall"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "geom_hash": "199b28b15da66624f4f828db99a8770a"
+    },
+    {
+      "index": 1,
+      "operator": "switch_connector",
+      "params": {
+        "interface_id": "iface_0",
+        "kind": "snap_fit",
+        "params": {},
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "below_min_wall -> switch_connector",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "below_min_wall"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 6,
+      "sim_calls": 0,
+      "geom_hash": "d31cc79f570a1c4318308fe0d710a5d0"
+    }
+  ],
+  "counts": {
+    "repaired_by_policy": 0,
+    "physical_failures_final": 1,
+    "final_codes": [
+      "below_min_wall"
+    ],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 2.726x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\_t4\\rrA\\trace.jsonl",
+    "rows": 13,
+    "replay_hashes": [
+      "199b28b15da66624f4f828db99a8770a",
+      "d31cc79f570a1c4318308fe0d710a5d0"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\_t4\\rrA\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\_t4\\rrA\\geometry\\body.stl",
+        "hash": "sha256:49ded551992ce762a422822117a5b82c",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\_t4\\rrA\\geometry\\insert.stl",
+        "hash": "sha256:d01932be3492e22cfe432c5d64a0de16",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

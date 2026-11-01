@@ -1,0 +1,128 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\acceptance-lead\\c6-eval\\runs\\demo-dovetail__random",
+    "policy": "random",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.026
+  },
+  "ticket": {
+    "id": "13d0c631abcde352afedb12ba7ff85c1",
+    "outcome": "repaired",
+    "reason": "no physical failure"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "no physical failure",
+    "rounds": 0
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 0,
+      "left": 2
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 0,
+      "left": 16
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 0,
+      "left": 8
+    },
+    "verifier_spend": {
+      "geom_calls": 5,
+      "sim_calls": 0
+    },
+    "rounds_produced": 0,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "demo-dovetail",
+    "kind": "dovetail",
+    "requirement": "A 10 mm trapezoidal tongue with a 12 degree flank angle should slide 20 mm into the +X face of a 60x40x16 plate and be held by the flanks and the 6 mm-deep groove. The load is along X, so the part slides in rather than pressing in.",
+    "initial_content_key": "sha256:bab568921966f5a9cbc8cbd1a8395ea4",
+    "final_content_key": "sha256:bab568921966f5a9cbc8cbd1a8395ea4",
+    "initial_clearance_mm": 0.1,
+    "final_clearance_mm": 0.1,
+    "final_revision": 1,
+    "provenance": {
+      "interface_kind": "fixture:hand",
+      "params": "fixture:hand",
+      "why": "stock dovetail numbers; the approach spans the full slide so the path check is meaningful"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [],
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 1.243x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\acceptance-lead\\c6-eval\\runs\\demo-dovetail__random\\trace.jsonl",
+    "rows": 3,
+    "replay_hashes": []
+  },
+  "geometry": {
+    "dir": "runs\\acceptance-lead\\c6-eval\\runs\\demo-dovetail__random\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\acceptance-lead\\c6-eval\\runs\\demo-dovetail__random\\geometry\\body.stl",
+        "hash": "sha256:ec54a425dc8bc521d1452a86c73122ea",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\acceptance-lead\\c6-eval\\runs\\demo-dovetail__random\\geometry\\insert.stl",
+        "hash": "sha256:6d384e7f3818f625986137afed5a083f",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

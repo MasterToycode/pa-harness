@@ -1,7 +1,9 @@
 """`pah` command line — the first slice of the contract in `pah-dev-doc-v1.md` §7.4.
 
-Only the two commands M0 needs exist: `verify sanity` (§4.8's run-before-use gate)
-and `probe connector` (the 705/388 reproduction). Both take `--json`.
+`verify sanity` (§4.8's run-before-use gate) and `probe connector` (the 705/388
+reproduction) are the M0 commands; v2 adds `run`, `design`, `eval` and `plugins`,
+each mounted from its own `cli/<name>.py` so this file stays the dispatcher and the
+existing two commands keep their behaviour byte for byte.
 
 Exit codes are §7.4's and nothing else reads them:
 
@@ -73,6 +75,19 @@ def _parser() -> argparse.ArgumentParser:
     )
     connector.add_argument("--json", action="store_true", help="machine-readable output")
     connector.set_defaults(handler=_probe_connector)
+
+    # v2 groups. Imported here, not at module import time, so `pah --help` and the
+    # two M0 commands do not pay for the geometry stack (the modules keep their own
+    # heavy imports inside their handlers for the same reason).
+    from pah.cli import design as design_cli  # noqa: PLC0415
+    from pah.cli import eval as eval_cli  # noqa: PLC0415
+    from pah.cli import plugins as plugins_cli  # noqa: PLC0415
+    from pah.cli import run as run_cli  # noqa: PLC0415
+
+    run_cli.add_parser(groups)
+    design_cli.add_parser(groups)
+    eval_cli.add_parser(groups)
+    plugins_cli.add_parser(groups)
 
     return parser
 

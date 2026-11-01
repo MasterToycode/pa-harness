@@ -17,30 +17,38 @@ part*, so it belongs in a future `peg_hole_through` kind, not in a flag here.
 
 The seated pose is therefore "peg bottom on the socket floor":
 `insert.pose_mm.z = body_top_z - engage_mm`. The peg then stands
-`peg_length_mm - engage_mm` proud of the top face, which is the length the
-physics body and the gripper get to hold. The peg bottom and the socket floor are
-**coplanar, not overlapping**: at the seated pose the two solids touch over a
-face, so their intersection has zero volume. That is the design-plane rule
+`peg_length_mm - engage_mm` proud of the top face. The peg bottom and the socket
+floor are **coplanar, not overlapping**: at the seated pose the two solids touch
+over a face, so their intersection has zero volume. That is the design-plane rule
 ("intersection volume > 1e-6 mm3" counts as interference), and a fixture must not
 shave a micron off the pose to make the arithmetic look tidier -- a normal design
 must never be reported as interference.
+
+Why the insert is just the peg
+------------------------------
+A peg with a gripping plate on top was the first model, and the physics gate
+rejected it for a real reason: MuJoCo collides convex hulls, and a handle wider
+than the peg is not convex (the insert's hull/volume ratio measured 1.681), so
+the hull erases the step the design depends on -- the peg would behave like a
+short fat block and the settle would be meaningless. Two honest answers exist:
+decompose the insert into convex pieces, or let the peg be a peg. The second is
+cheaper and removes a number the spec never had: the `2 * d_peg` handle was this
+file's invention, not the design's. So the insert is one cylinder of diameter
+`d_peg_mm` and length `peg_length_mm` -- convex, watertight, volume `pi r^2 L`.
+
+`PartSpec.size_mm` is therefore an **envelope hint** for a peg_hole insert, not a
+shape input: the builder reads the interface parameters and the body's blank, and
+reads nothing else off the insert. The envelope is still recorded in the
+`Assembly`, because that is what a report shows about the part.
 
 Local frames (the base class puts both in world coordinates)
 -----------------------------------------------------------
 * body: blank centred on the origin; the socket axis crosses the body at
   `feature_xy_mm` in X/Y, its opening is the top face and its floor is
   `engage_mm` below that.
-* insert: origin at the peg's **leading tip**; the peg runs from z = 0 to
-  `peg_length_mm`, a square handle sits on top of it, and `approach_mm` steps the
-  whole insert back up the axis from the seated pose.
-
-The handle is a fixed proportion, not a parameter
--------------------------------------------------
-`2 * d_peg` across (floored at 12 mm) and `d_peg / 2` tall (floored at 4 mm), so
-even a 2 mm peg has a body a gripper and a printer can see. The spec has no field
-for "how big is the handle", and inventing one would be a second truth about a
-part the interface does not own; the contract says insert = public feature plus a
-piece of gripping body, so that is what this is.
+* insert: origin at the peg's **leading tip**; the cylinder runs from z = 0 to
+  `peg_length_mm`, and `approach_mm` steps the whole insert back up the axis from
+  the seated pose.
 
 Resolution
 ----------
@@ -56,7 +64,7 @@ from __future__ import annotations
 import trimesh
 
 from pah.design.connectors import ConnectorBuilderBase, blank_box
-from pah.design.spec import PartSpec, Vec3
+from pah.design.spec import DesignSpec, PartSpec, Vec3
 
 __all__ = ["PegHoleBuilder"]
 
@@ -73,7 +81,7 @@ class PegHoleBuilder(ConnectorBuilderBase):
     def build_local(
         self, body: PartSpec, insert: PartSpec, params
     ) -> tuple[trimesh.Trimesh, trimesh.Trimesh]:
-        """Body with a blind socket, and a peg with a handle above it."""
+        """Body with a blind socket, and the peg that goes in it."""
         top_local = float(body.size_mm[2]) / 2.0
         # One millimetre above the top face keeps the cutter's opening off the
         # blank's own face, which is where CSG kernels produce slivers. The floor
@@ -96,22 +104,19 @@ class PegHoleBuilder(ConnectorBuilderBase):
         )
 
         peg_length = params.peg_length_mm
-        peg = trimesh.creation.cylinder(
+        insert_mesh = trimesh.creation.cylinder(
             radius=params.d_peg_mm / 2.0,
             height=peg_length,
             sections=SECTIONS,
             transform=trimesh.transformations.translation_matrix((0.0, 0.0, peg_length / 2.0)),
         )
-        handle_xy = max(2.0 * params.d_peg_mm, 12.0)
-        handle_h = max(params.d_peg_mm / 2.0, 4.0)
-        handle = trimesh.creation.box(
-            extents=(handle_xy, handle_xy, handle_h),
-            transform=trimesh.transformations.translation_matrix(
-                (0.0, 0.0, peg_length + handle_h / 2.0)
-            ),
-        )
-        # The peg's top cap is coplanar with the handle's bottom face. A union is
-        # still the right construct: two touching shells would each be closed but
-        # the part would be two bodies, and physics would drop one of them.
-        insert_mesh = trimesh.boolean.union([peg, handle], engine="manifold")
         return body_mesh, insert_mesh
+
+    def _seat_point_mm(self, spec: DesignSpec) -> Vec3:
+        """The socket floor's centre, in the body's local frame."""
+        params = spec.interface.validated_params()
+        return (
+            float(params.feature_xy_mm[0]),
+            float(params.feature_xy_mm[1]),
+            float(spec.body.size_mm[2]) / 2.0 - params.engage_mm,
+        )

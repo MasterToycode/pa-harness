@@ -1,0 +1,153 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\acceptance-lead\\c6-eval\\runs\\demo-peg-hole-interfere__random",
+    "policy": "random",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 1.124
+  },
+  "ticket": {
+    "id": "506b5887447c0687a3865386c44b4e24",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 1,
+      "left": 1
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 11,
+      "left": 5
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 1,
+      "left": 7
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 1
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "demo-peg-hole-interfere",
+    "kind": "dovetail",
+    "requirement": "A 20 mm peg plate must seat on the floor of an 8 mm-deep blind 10 mm socket in a 60x40x12 plate. The peg is ordered 0.1 mm oversized per side, which is the deliberate defect the loop has to find and repair.",
+    "initial_content_key": "sha256:e94f729b9cab58dba5bc715cf2db0e1d",
+    "final_content_key": "sha256:ac785af8cbb49d14ca2dca370f1f60b3",
+    "initial_clearance_mm": -0.1,
+    "final_clearance_mm": 0.35,
+    "final_revision": 3,
+    "provenance": {
+      "interface_kind": "fixture:hand",
+      "params": "fixture:hand",
+      "why": "the proposal's peg 10.2 / hole 10.0 demo; negative clearance and an oversized peg"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "switch_connector",
+      "params": {
+        "interface_id": "iface_0",
+        "kind": "dovetail",
+        "params": {},
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.342585",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 1,
+      "geom_hash": "f42cb3c40f3efd1a8fa9436a9975b84e"
+    }
+  ],
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 1.244x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\acceptance-lead\\c6-eval\\runs\\demo-peg-hole-interfere__random\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "f42cb3c40f3efd1a8fa9436a9975b84e"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\acceptance-lead\\c6-eval\\runs\\demo-peg-hole-interfere__random\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\acceptance-lead\\c6-eval\\runs\\demo-peg-hole-interfere__random\\geometry\\body.stl",
+        "hash": "sha256:dab1050fb52ecf6393c2944eec753c06",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\acceptance-lead\\c6-eval\\runs\\demo-peg-hole-interfere__random\\geometry\\insert.stl",
+        "hash": "sha256:6bf41d35dfbdc9518906e5ec7c88cfdc",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

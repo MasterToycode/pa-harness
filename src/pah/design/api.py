@@ -96,6 +96,14 @@ DESIGN_CODES: dict[str, tuple[str, ...]] = {
 #: and stops early only when a caller asks it to; see `DesignVerifierRegistry.check`.
 DESIGN_VERIFIER_IDS: tuple[str, ...] = tuple(DESIGN_CODES)
 
+#: Bumped whenever a builtin builder changes the geometry a given set of parameters
+#: produces. It is part of `geometry_hash`, which is otherwise spec-derived, so a
+#: materialiser change cannot keep serving triangle files from before the change
+#: under an unchanged hash. Learned the hard way: peg_hole's insert went from
+#: "peg + handle" to "plain cylinder" on 2026-11-01, and without this constant the
+#: old STLs kept the new hash.
+GEOMETRY_VERSION = "2"
+
 #: The design plane's action space, declared here so a policy, a test and a report
 #: can all cite one list. The operators themselves live in `pah.policy.design_ops`
 #: and register into an `OperatorRegistry` (the same guarded registry M1 uses).
@@ -150,6 +158,19 @@ class ConnectorBuilder(Protocol):
 
     def clearance_mm(self, params: BaseModel) -> float:
         """The designed radial clearance for `params`, in mm."""
+        ...
+
+    def seated_pose_mm(self, spec: DesignSpec) -> Vec3:
+        """Where the insert's origin sits when it is fully seated, in world mm.
+
+        Exposed because a *kind switch* has to move the insert, and only the kind
+        knows where. Measured cost of getting this wrong (`switch_connector`,
+        peg_hole -> dovetail, 2026-11-01): the insert stayed at the peg's seated
+        pose and the seated interference became 1800 mm3 — a blocking false
+        positive that no policy could repair, caused by geometry that was never
+        the design's intent. The alternative, hard-coding one formula per kind in
+        the operator, is the same error written twice.
+        """
         ...
 
     def build(self, spec: DesignSpec) -> ConnectorGeometry:
@@ -434,8 +455,11 @@ def geometry_hash(spec: DesignSpec, part_id: str) -> str:
 
     The interface kind is in the digest so switching peg_hole -> snap_fit with
     numerically identical parameters is a new assembly, not a cache hit.
+    `GEOMETRY_VERSION` is in it so a *materialiser* change invalidates cached
+    triangles too: without it, the peg_hole insert could change from "peg +
+    handle" to a plain cylinder while every artifact kept its hash.
     """
-    blob = f"{spec.content_key()}|{part_id}|{spec.interface.kind}"
+    blob = f"{GEOMETRY_VERSION}|{spec.content_key()}|{part_id}|{spec.interface.kind}"
     return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()[:32]
 
 

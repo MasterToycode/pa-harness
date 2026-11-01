@@ -58,18 +58,6 @@ def intersection_volume(first: trimesh.Trimesh, second: trimesh.Trimesh) -> floa
     return float(abs(signed.sum()) / 6.0)
 
 
-def reach_at(mesh: trimesh.Trimesh, z: float, *, start: float = -100.0) -> float:
-    """How far `mesh` reaches from the Z axis at height `z`, measured along X.
-
-    Used where a bounding box cannot answer: the insert's AABB is set by its
-    handle, so "how long is the exposed peg" has to be read off a section.
-    """
-    locations, _, _ = mesh.ray.intersects_location(
-        np.array([[start, 0.0, z]]), np.array([[1.0, 0.0, 0.0]])
-    )
-    return float(np.max(np.abs(locations[:, 0])))
-
-
 # --------------------------------------------------------------------------- #
 # The registry
 # --------------------------------------------------------------------------- #
@@ -93,6 +81,9 @@ def test_a_kind_cannot_be_registered_twice():
 
         def clearance_mm(self, params):
             return 0.0
+
+        def seated_pose_mm(self, spec):
+            return (0.0, 0.0, 0.0)
 
         def build(self, spec):
             raise AssertionError("never called")
@@ -188,6 +179,24 @@ def test_a_clean_design_has_a_clear_path_along_its_reported_axis(name, tmp_path:
         moved.apply_translation([height * component for component in design.mate_axis])
         worst = max(worst, intersection_volume(body, moved))
     assert worst < 1e-3, f"{spec.interface.kind} is blocked along its own axis: {worst}"
+
+
+def test_the_assembly_records_the_insertion_facts_for_view_of(tmp_path: Path):
+    """A consumer that only has the `Assembly` must still sweep the real axis.
+
+    `view_of(assembly)` rebuilds a view from what the assembly recorded. Without
+    the axis there, a dovetail would be swept along +Z and its correct design
+    reported blocked -- which is exactly what happened before the field existed.
+    """
+    spec = fixture("demo-dovetail.json")
+    design = materialize(spec, tmp_path)
+
+    assert list(design.assembly.constraints["mate_axis"]) == pytest.approx([1.0, 0.0, 0.0])
+    assert design.assembly.constraints["approach_mm"] == pytest.approx(22.0)
+
+    view = view_of(design.assembly)
+    assert tuple(view.mate_axis) == pytest.approx((1.0, 0.0, 0.0), abs=1e-12)
+    assert view.approach_mm == pytest.approx(22.0)
 
 
 def test_built_clearance_is_the_specs_clearance():
@@ -293,16 +302,38 @@ def test_the_insert_seats_on_the_socket_floor(tmp_path: Path):
     # matters -- a pose a micron too deep would make the interference verifier
     # report a perfectly normal design.
     assert insert.bounds[0][2] == pytest.approx(floor, abs=1e-6)
-    # The exposed peg really is `peg_length - engage` long: just below its top the
-    # section is still the peg, and half a millimetre above it the section has
-    # widened to the handle. The insert's AABB cannot answer this -- the handle is
-    # what sets it -- so the length is read off two sections.
-    exposed = params.peg_length_mm - params.engage_mm
-    assert reach_at(insert, body_top + exposed - 0.5) == pytest.approx(
-        params.d_peg_mm / 2.0, rel=0.01
+    # ... and the rest of the peg stands `peg_length - engage` proud of the top.
+    assert insert.bounds[1][2] - body_top == pytest.approx(
+        params.peg_length_mm - params.engage_mm, abs=1e-6
     )
-    assert reach_at(insert, body_top + exposed + 0.5) > 1.5 * params.d_peg_mm / 2.0
     assert intersection_volume(body, insert) < 1e-3
+
+
+def test_the_peg_insert_is_a_convex_solid(tmp_path: Path):
+    """MuJoCo collides convex hulls, so a non-convex peg would be simulated wrong.
+
+    This is the precondition for the physics verifier to judge a peg at all: a
+    handle plate wider than the peg makes the hull swallow the step (the rejected
+    design measured hull/volume 1.681). A bare cylinder is convex, so the hull and
+    the solid are the same body and a settle means what it says.
+    """
+    spec = fixture("demo-peg-hole-clear.json")
+    params = spec.interface.validated_params()
+    insert = materialize(spec, tmp_path).meshes[spec.insert.id]
+
+    ratio = insert.convex_hull.volume / insert.volume
+    assert ratio == pytest.approx(1.0, abs=1e-6), f"peg insert is not convex (ratio {ratio})"
+
+
+def test_the_kind_knows_where_its_insert_seats():
+    """`seated_pose_mm` is what a kind switch uses to move an insert, so it has to
+    agree with the poses a hand-written fixture already believes."""
+    for path in FIXTURE_FILES:
+        spec = DesignSpec.model_validate_json(path.read_text(encoding="utf-8"))
+        builder = builder_for(spec.interface.kind)
+        assert builder.seated_pose_mm(spec) == pytest.approx(
+            tuple(spec.insert.pose_mm), abs=1e-9
+        )
 
 
 def test_a_part_that_is_not_one_closed_solid_is_refused():

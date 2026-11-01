@@ -33,9 +33,16 @@
 - `ConnectorGeometry.mate_axis` 是上面局部轴经 **insert 自身旋转**后的世界单位向量；
   `approach_mm` 是沿 `+mate_axis` 从 seated 往外退的起点。插入路径验证器从 `+approach` 扫到 `0`。
 - 这两个量**跟着设计走**：`materialize` 把 `ConnectorGeometry` 的值抄进
-  `MaterializedDesign.mate_axis/.approach_mm`，`.view()` 再透传给 `DesignView.mate_axis/.approach_mm`。
-  **验证器读 `view.mate_axis`，不要硬编码 +Z、也不要从 kind 名重推**（dovetail 是 +X，
-  硬编码 +Z 会把正确的滑入配合判成阻塞）。`builder_for(kind).build(spec)` 仍是唯一权威来源。
+  `MaterializedDesign.mate_axis/.approach_mm`，`.view()` 再透传给 `DesignView.mate_axis/.approach_mm`；
+  同一个值还写进 `assembly.constraints`（`mate_axis`/`approach_mm`），所以只拿到 `Assembly` 的
+  消费者（`view_of`、CLI、resume）也能拿到真轴。**验证器读 `view.mate_axis`，不要硬编码 +Z、
+  也不要从 kind 名重推**（dovetail 是 +X，硬编码 +Z 会把正确的滑入配合判成阻塞）。
+  `builder_for(kind).build(spec)` 仍是唯一权威来源。
+- **换 kind 必须重定位姿**，而只有 kind 知道该放哪：`builder.seated_pose_mm(spec) -> Vec3` 返回
+  「完全插入时 insert 原点的世界坐标」。T3 的 `switch_connector`、T4 的 `pah design new` 调它。
+  这个返回值必须与 fixture 里手写的 `insert.pose_mm` 一致——测试 `test_the_kind_knows_where_its_insert_seats`
+  就是拿四个 fixture 互校这条。不这么做的话，peg_hole → dovetail 的切换会把 insert 留在
+  `(0,0,-2)`（dovetail 应为 `(10,0,8)`），seated 交体积 **1800.01 mm³**，变成策略永远修不好的假干涉。
 
 ---
 
@@ -44,8 +51,13 @@
 ### peg_hole —— 盲孔 socket
 
 - body：blank − 圆柱盲孔（半径 `d_hole/2`，**孔深 = `engage_mm`**，开口在顶面，孔底 = 顶面 − engage）。
-- insert：圆柱销（半径 `d_peg/2`，高 `peg_length_mm`，默认 `engage + 6`）+ 上方方形手柄
-  （`max(2·d_peg, 12)` 见方 × `max(d_peg/2, 4)` 高）。
+- insert：**单根圆柱销**（半径 `d_peg/2`，高 `peg_length_mm`，默认 `engage + 6`）。没有手柄板。
+- **insert 是纯凸体（`convex_hull.volume / volume = 1.000`）**。这是物理档能跑的前提：MuJoCo 只碰
+  凸包，销 + 宽手柄板那样非凸的 insert 会被凸包抹掉台阶（实测 hull/volume = 1.681，物理验证器
+  正确地拒绝了）。要么凸分解（贵、不是每种形状都可行），要么让销就是销——选后者，顺便去掉一个
+  spec 里根本没有的数（`2·d_peg` 见方的手柄是物化器自己发明的，不是设计意图）。
+- **`insert.size_mm` 在 peg_hole 下只是包络提示，不参与几何**：builder 只读 interface 参数和
+  body 的 blank。这个字段仍会写进 `Assembly`，报表里显示的就是「这块零件名义多大」。
 - **为什么盲孔而不是通孔**：无销头的销穿过通孔后没有任何东西托住它，物理沉降会整根掉出去，
   这不是设计缺陷、是模型缺了底面支撑，会让每个 peg_hole 案例都过不了物理档。盲孔是真实配合
   （销靠配合定位），且给 insertion path 一条直线。通孔 + 销头将来做成**新 kind**`peg_hole_through`，
@@ -74,6 +86,17 @@
   + 手柄（`engage × max(3·width, 20) × max(0.8·depth, 6)`），榫头顶面与手柄底面共面。
 - seated：榫头前侧面 = 槽底 + `clearance`；**手柄底面坐在 body 顶面上**（贴面接触，见 §3）；
   榫头三条边各留 `clearance`，无接触。
+
+### 物理档的凸性口径
+
+| kind | insert 是否凸 | 物理档 |
+|---|---|---|
+| `peg_hole` | 是（`hull/volume = 1.000`） | 正常评估沉降 |
+| `snap_fit` | 否（钩头 + 悬臂梁） | `not_evaluated`（T5 记「不评估」，不报 `physics_error`） |
+| `dovetail` | 否（梯形榫 + 手柄） | 同上 |
+
+snap/dovetail 保留手柄是必要的（卡扣与滑入需要夹持段），它们由几何/干涉/路径验证器覆盖；
+**物理档不评估 ≠ 通过**，报表里必须分开写，不能把 `not_evaluated` 折进成功率。
 
 ### 圆柱分辨率
 
