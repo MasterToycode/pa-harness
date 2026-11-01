@@ -158,6 +158,18 @@ def _canonical(value: object) -> str:
     return json.dumps(value, sort_keys=True, default=str, ensure_ascii=False)
 
 
+def _snapshot_key(assembly: Assembly) -> str:
+    """A cache key that changes whenever the geometry or the design changes.
+
+    `id` alone is not enough: nothing in the core model forces a caller to derive
+    a fresh id per version, and a double that reuses the id would make a stale
+    verdict look current. The fingerprint covers the parts' geometry hashes, the
+    joints and the connectors; the id is kept alongside it so two different
+    assemblies that happen to hash alike still get separate entries.
+    """
+    return f"{assembly.id}|{assembly_fingerprint(assembly)}"
+
+
 def _digest(value: object) -> str:
     return str(value) if value is not None else ""
 
@@ -169,6 +181,22 @@ def _add_cost(total: Cost, extra: Cost) -> Cost:
         wall_s=total.wall_s + extra.wall_s,
         llm_calls=total.llm_calls + extra.llm_calls,
         tokens=total.tokens + extra.tokens,
+    )
+
+
+def _cost_between(earlier: Cost, later: Cost) -> Cost:
+    """`later - earlier`, clamped at zero per component.
+
+    A meter can only move forward, but a metric that goes `int -> float` or is
+    re-created mid-run must not produce a negative charge: a negative cost would
+    let a round *earn* budget, which no report would survive.
+    """
+    return Cost(
+        geom_calls=max(0, later.geom_calls - earlier.geom_calls),
+        sim_calls=max(0, later.sim_calls - earlier.sim_calls),
+        wall_s=max(0.0, later.wall_s - earlier.wall_s),
+        llm_calls=max(0, later.llm_calls - earlier.llm_calls),
+        tokens=max(0, later.tokens - earlier.tokens),
     )
 
 
@@ -218,11 +246,25 @@ class RepairLoop:
     #: Backstop only; the real ceiling is the mandate's budget.
     max_rounds: int = 32
     _seen: set[str] = field(default_factory=set, init=False, repr=False)
+    #: `assembly.id -> (certs, verified)` for the current run, so a snapshot is
+    #: judged once. Assembly ids are content addressed, so a hit is the same
+    #: geometry judged by the same verifiers, not a guess.
+    _verified: dict[str, tuple[list[FailureCertificate], bool]] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    #: The cascade's meter as of the last charge, and the spent-but-uncharged
+    #: remainder. Verification costs money; a round must pay for the checks that
+    #: led to it, or an "equal budget" comparison rewards the expensive cascade.
+    _charged: Cost = field(default_factory=Cost, init=False, repr=False)
+    _pending: Cost = field(default_factory=Cost, init=False, repr=False)
 
     def run(self, ticket: Ticket, assembly: Assembly) -> EpisodeResult:
         """Drive `ticket` from `assembly` until it passes, runs out, or finds no
         action. The returned assembly is the last one that was verified."""
         self._seen = {assembly_fingerprint(assembly)}
+        self._verified = {}
+        self._charged = self._meter_now()
+        self._pending = Cost()
         used = ticket.used
         budget = ticket.mandate.budget
         total_cost = Cost()
@@ -236,7 +278,7 @@ class RepairLoop:
         self._emit("episode.begin", ticket=ticket.id, policy=self.policy.name, assembly=ticket.id)
 
         while True:
-            certs, verified = self._verify(assembly, ticket.id, phase="before")
+            certs, verified = self._verified_or_run(assembly, ticket.id, phase="before")
             if not verified:
                 # A verifier that cannot run leaves the state unknown. Unknown is
                 # never a pass and never a physical failure: the episode stops.
@@ -307,14 +349,17 @@ class RepairLoop:
                     operator=plan.operator,
                     error=f"{type(error).__name__}: {error}",
                 )
-                closed = self._close(round_, "error", [], plan.cost_est, new_assembly=None)
+                charged = self._charge(plan.cost_est)
+                closed = self._close(round_, "error", [], charged, new_assembly=None)
                 history.append(closed)
-                total_cost = _add_cost(total_cost, plan.cost_est)
-                used = _spend(used, plan.cost_est)
+                total_cost = _add_cost(total_cost, charged)
+                used = _spend(used, charged)
                 continue
 
             self.engine.stage_round(round_.id, "materialized")
-            after, verified_after = self._verify(new_assembly, ticket.id, phase="after")
+            after, verified_after = self._verified_or_run(
+                new_assembly, ticket.id, phase="after"
+            )
 
             fingerprint = assembly_fingerprint(new_assembly)
             cycled = fingerprint in self._seen
@@ -326,10 +371,11 @@ class RepairLoop:
             else:
                 verdict = "fail" if hard_failures(after) else "pass"
 
-            closed = self._close(round_, verdict, after, plan.cost_est, new_assembly=new_assembly)
+            charged = self._charge(plan.cost_est)
+            closed = self._close(round_, verdict, after, charged, new_assembly=new_assembly)
             history.append(closed)
-            total_cost = _add_cost(total_cost, plan.cost_est)
-            used = _spend(used, plan.cost_est)
+            total_cost = _add_cost(total_cost, charged)
+            used = _spend(used, charged)
             self._emit(
                 "round.close",
                 ticket=ticket.id,
@@ -354,6 +400,86 @@ class RepairLoop:
                 )
 
     # -- internals ---------------------------------------------------------
+
+    def _verified_or_run(
+        self, assembly: Assembly, ticket_id: str, *, phase: str
+    ) -> tuple[list[FailureCertificate], bool]:
+        """Verify `assembly`, reusing the last verdict for the same snapshot.
+
+        Every round verifies its output and then the next iteration used to
+        verify the *same* snapshot again — twice the expensive tier for one
+        answer. The cache is keyed by the snapshot's content fingerprint, which
+        is what a hit has to mean: the same geometry judged by the same
+        verifiers. Keying on `assembly.id` alone would be a bet that every caller
+        derives a fresh id per version, and one caller (a test double, a
+        hand-built assembly) would silently turn a stale verdict into a pass.
+        The reuse is still written to the trace, flagged `cached`: "we did not
+        re-run it" is a fact a reader of the trace needs.
+        """
+        hit = self._verified.get(_snapshot_key(assembly))
+        if hit is None:
+            certs, verified = self._verify(assembly, ticket_id, phase=phase)
+            # Only a run that actually answered is remembered. A verifier that
+            # raised, or that reported an environment-family certificate, leaves
+            # the state unknown — and the documented retry for a transient failure
+            # (`docs/pah-dev-doc-v1.md` §4.5: the 388 -> 393 retry after an
+            # intermittent OOM) is only possible if the next look is a fresh one.
+            if verified:
+                self._verified[_snapshot_key(assembly)] = (list(certs), verified)
+            return certs, verified
+        certs, verified = hit
+        self._emit(
+            "verify",
+            ticket=ticket_id,
+            phase=phase,
+            codes=[cert.code for cert in certs],
+            physical=len(hard_failures(certs)),
+            verified=verified,
+            cached=True,
+        )
+        return list(certs), verified
+
+    def _meter_now(self) -> Cost:
+        """What the cascade says it has spent, or zero when it says nothing.
+
+        `LoopVerifiers` does not require a meter — a deterministic stub in a test
+        has nothing to report — so the port is read defensively: a `spent`
+        attribute or method returning a `Cost`, else nothing. A cascade that
+        under-reports is not an error here; it simply cannot charge for work it
+        did not declare, which is why the physics tier is required to report.
+        """
+        source = getattr(self.verifiers, "spent", None)
+        if source is None:
+            return Cost()
+        value = source() if callable(source) else source
+        if isinstance(value, Cost):
+            return value
+        if isinstance(value, dict):
+            return Cost(
+                geom_calls=int(value.get("geom_calls", 0) or 0),
+                sim_calls=int(value.get("sim_calls", 0) or 0),
+                wall_s=float(value.get("wall_s", 0.0) or 0.0),
+                llm_calls=int(value.get("llm_calls", 0) or 0),
+                tokens=int(value.get("tokens", 0) or 0),
+            )
+        return Cost()
+
+    def _charge(self, estimate: Cost) -> Cost:
+        """The round's real cost: what the plan estimated plus what verification spent.
+
+        A round is charged after it closes, so the arithmetic the engine checks
+        (`begin_round` refuses a plan the budget cannot pay for) still uses the
+        declared estimate. The extra appears in the closed round's `cost`, which
+        is what a budget report sums — estimating only the declared part would let
+        an expensive verifier cascade look free.
+        """
+        now = self._meter_now()
+        spent = _cost_between(self._charged, now)
+        self._charged = now
+        self._pending = _add_cost(self._pending, spent)
+        charged = _add_cost(estimate, self._pending)
+        self._pending = Cost()
+        return charged
 
     def _verify(
         self, assembly: Assembly, ticket_id: str, *, phase: str
@@ -394,7 +520,6 @@ class RepairLoop:
             verified=verified,
         )
         return certs, verified
-
     def _close(
         self,
         round_: Round,

@@ -71,9 +71,14 @@ Materializer = Callable[[DesignSpec, Path], MaterializedDesign]
 DesignView(spec, root?, meshes?).mesh(id) / .body / .insert        # 惰性加载 root/geometry/<id>.stl
 DesignVerifier: spec: VerifierSpec; check(view) -> list[FailureCertificate]; fixtures() -> (good, bad)
 DesignVerifierRegistry: register/get/ids/sanity/check(view, stop_on_hard=False)/disabled
-assembly_from_spec(spec=, geometry_paths=, geometry_hashes=, parent=None, version=1) -> Assembly
+assembly_from_spec(spec=, geometry_paths=None, geometry_hashes=None, parent=None, version=1) -> Assembly
+geometry_hash(spec, part_id) -> "sha256:..."   # 只由 spec 内容决定；跨 out_dir / 跨物化器稳定
 spec_of(assembly) -> DesignSpec
 ```
+
+**几何身份的口径（2026-11-01 定，避免两处实现漂移）**：`geom.hash` 一律用 `geometry_hash(spec, part_id)`，**不许**按 STL 字节重算。理由：① 恢复时只靠 `spec.json` 就能复现同一串 hash，run 目录搬走也不变；② 将来 CAD/DiT 物化器与 trimesh 必须对同一组数字给出同一个身份。`geom.path` 为空 = 尚未物化，级联适配器负责在给验证器看三角形之前先物化。
+
+**算子是纯的**：`Operator.apply(asm, plan) -> Assembly` 只改 spec（写进 `assembly.constraints["design_spec"]`），用 `assembly_from_spec(..., parent=旧id, version+1)` 造新版本，**不写盘、不建几何**。物化发生在级联适配器（`DesignVerifierCascade`）第一次看到 `geom.path` 为空时——验证器不许自己造几何，但"把 spec 变成可看的三角形"是适配器的职责，不是验证器的判断。
 
 **顺带被继承、不许改的行为**：`Assembly` 是指数，`RepairLoop`（`policy/loop.py`）不用改——它只认 `LoopEngine/LoopVerifiers/LoopRegistry/LoopPolicy` 四个 Protocol，v2 全部满足。
 
@@ -92,6 +97,8 @@ spec_of(assembly) -> DesignSpec
 `VerifierSpec(id, codes, cost_class, fixtures)` 复用 `tools/verifiers/base.py` 的那一个；`fixtures` 由各验证器自己的 `fixtures()` 返回 `(known_good, known_bad)` 两份 `DesignView`。
 
 `physics_error` 与 `verifier_error` 一律 `family="environment"`：**不进失败率，不算通过**。
+
+**级联适配器必须报账**：`DesignVerifierCascade` 暴露 `spent: Cost`（累积 `geom_calls/sim_calls`）。`policy/loop.py` 会把两次 check 之间的增量记到该轮的 `cost` 上——否则昂贵的物理档会显得免费，「等预算」比较就不公平。同一个快照只验证一次（loop 已按内容指纹缓存，且**失败/环境族的验证不进缓存**，瞬时故障可以重试）。
 
 ---
 

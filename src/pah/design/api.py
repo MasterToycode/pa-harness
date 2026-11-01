@@ -31,6 +31,7 @@ applies to event kinds.
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Protocol, runtime_checkable
@@ -62,6 +63,7 @@ __all__ = [
     "MaterializedDesign",
     "Materializer",
     "assembly_from_spec",
+    "geometry_hash",
     "spec_of",
 ]
 
@@ -399,23 +401,50 @@ Materializer = Callable[[DesignSpec, Path], MaterializedDesign]
 SPEC_SLOT = "design_spec"
 
 
+def geometry_hash(spec: DesignSpec, part_id: str) -> str:
+    """A content-addressed id for one part's geometry, derived from the spec alone.
+
+    Deliberately *not* a hash of the exported STL. Two reasons, both load-bearing:
+
+    * the loop's fingerprint and cycle detection must be reproducible from
+      `spec.json` without rebuilding geometry — that is what makes a resumed
+      episode land on the same hashes even if its run directory moved;
+    * two materialisers (trimesh today, a CAD kernel or a DiT adapter tomorrow)
+      must agree on identity for the same numbers, or a cache keyed on geometry
+      would silently miss forever.
+
+    The interface kind is in the digest so switching peg_hole -> snap_fit with
+    numerically identical parameters is a new assembly, not a cache hit.
+    """
+    blob = f"{spec.content_key()}|{part_id}|{spec.interface.kind}"
+    return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()[:32]
+
+
 def assembly_from_spec(
     *,
     spec: DesignSpec,
-    geometry_paths: dict[str, str],
-    geometry_hashes: dict[str, str],
+    geometry_paths: dict[str, str] | None = None,
+    geometry_hashes: dict[str, str] | None = None,
     parent: str | None = None,
     version: int = 1,
 ) -> Assembly:
-    """The `Assembly` payload for a materialised spec. Pure: no I/O, no hashing.
+    """The `Assembly` payload for a materialised spec. Pure: no I/O, no mesh access.
 
     Each part records its blank, its pose and a content-addressed geometry
     reference. The loop's `assembly_fingerprint` hashes `geom.hash`, so a spec edit
     that changes a number but not a vertex still moves the fingerprint — which is
     what makes cycle detection meaningful on the design plane.
+
+    `geometry_paths` is optional so a *pure* caller (an operator that edits the
+    spec, a policy test) can build the next version without touching the disk:
+    hashes come from `geometry_hash`, paths stay empty until a materialiser fills
+    them. `geom.path` being empty is the signal a cascade must materialise before
+    it can show a verifier any triangles.
     """
     from pah.core.ids import key  # local import: keeps this module import-light
 
+    hashes = geometry_hashes or {part.id: geometry_hash(spec, part.id) for part in spec.parts}
+    paths = geometry_paths or {}
     parts = tuple(
         {
             "id": part.id,
@@ -425,8 +454,8 @@ def assembly_from_spec(
             "rot_deg": list(part.rot_deg),
             "material": part.material,
             "geom": {
-                "hash": geometry_hashes[part.id],
-                "path": geometry_paths[part.id],
+                "hash": hashes[part.id],
+                "path": paths.get(part.id, ""),
             },
         }
         for part in spec.parts
