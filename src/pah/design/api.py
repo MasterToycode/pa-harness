@@ -173,12 +173,23 @@ class DesignView:
       records per part, so `view_of(assembly)` needs nothing else;
     * `root`   — the `root/geometry/<part_id>.stl` convention a materialiser
       writes, for callers that have a run directory but no assembly.
+
+    `mate_axis` and `approach_mm` are the insertion facts of the *built* geometry,
+    carried on the view rather than re-derived by each verifier. A verifier that
+    hard-codes +Z is wrong for every slide fit: dovetail seats along +X, and a path
+    verifier that lifts along Z would report a blocked insertion for a joint that
+    slides in perfectly. The defaults describe a plain axial peg, so a test that
+    builds its own meshes needs to say nothing.
     """
 
     spec: DesignSpec
     root: Path | None = None
     meshes: dict[str, trimesh.Trimesh] = field(default_factory=dict)
     paths: dict[str, str] = field(default_factory=dict)
+    #: Unit insertion direction in world coordinates, as built.
+    mate_axis: Vec3 = (0.0, 0.0, 1.0)
+    #: Distance the insert starts above the seated pose along `mate_axis`.
+    approach_mm: float = 6.0
 
     def mesh(self, part_id: str) -> trimesh.Trimesh:
         """The world-frame mesh for `part_id`, loaded on first use."""
@@ -380,10 +391,18 @@ class MaterializedDesign:
     #: Absolute paths of the written STLs, keyed by part id.
     paths: dict[str, str]
     root: Path
+    #: The insertion facts the builder reported, so a verifier never guesses an axis.
+    mate_axis: Vec3 = (0.0, 0.0, 1.0)
+    approach_mm: float = 6.0
 
     def view(self) -> DesignView:
         return DesignView(
-            spec=self.spec, root=self.root, meshes=dict(self.meshes), paths=dict(self.paths)
+            spec=self.spec,
+            root=self.root,
+            meshes=dict(self.meshes),
+            paths=dict(self.paths),
+            mate_axis=tuple(self.mate_axis),
+            approach_mm=float(self.approach_mm),
         )
 
 

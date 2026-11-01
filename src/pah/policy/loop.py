@@ -20,6 +20,7 @@ backstop that keeps a buggy policy from spinning.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 from typing import Callable, Literal, Protocol
 
@@ -258,10 +259,21 @@ class RepairLoop:
     _charged: Cost = field(default_factory=Cost, init=False, repr=False)
     _pending: Cost = field(default_factory=Cost, init=False, repr=False)
 
-    def run(self, ticket: Ticket, assembly: Assembly) -> EpisodeResult:
+    def run(
+        self, ticket: Ticket, assembly: Assembly, *, seen: Iterable[str] = ()
+    ) -> EpisodeResult:
         """Drive `ticket` from `assembly` until it passes, runs out, or finds no
-        action. The returned assembly is the last one that was verified."""
-        self._seen = {assembly_fingerprint(assembly)}
+        action. The returned assembly is the last one that was verified.
+
+        `seen` is the fingerprint history a *resumed* episode must remember. Cycle
+        detection is built on "have I been here before", and a fresh process that
+        only knows its current snapshot will happily walk back into geometry the
+        first run already ruled a cycle — the two runs then disagree on the round
+        count, which is exactly the acceptance check that fails. Callers pass the
+        fingerprints already written in the trace; the default empty set keeps the
+        single-process behaviour unchanged.
+        """
+        self._seen = {assembly_fingerprint(assembly), *seen}
         self._verified = {}
         self._charged = self._meter_now()
         self._pending = Cost()

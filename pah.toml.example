@@ -1,0 +1,38 @@
+# pah.toml — 外部服务注册表（示例）。复制成 pah.toml 后按需改；pah.toml 已被 .gitignore 忽略。
+#
+# 两条纪律（`app/providers.py` 实现，改配置不能绕过）：
+# 1. 凭据只写「环境变量名」，永不写明文。缺变量时调用前就失败，不会静默退回。
+# 2. 计费形态要声明：per_token 才记金额；quota/subscription 只记 tokens 与调用次数。
+#    跨 provider 的比较只比 tokens 和调用次数，不比金额。
+
+[llm]
+# 谁做决策。没有这一段时 `--policy llm` 会明确报错退出（不会假装跑通）。
+default = "deepseek"
+
+[llm.providers.deepseek]
+kind = "openai-compatible"
+base_url = "https://api.deepseek.com/v1"
+api_key_env = "DEEPSEEK_API_KEY"
+model = "deepseek-chat"
+billing = "per_token"
+pricing = { in_usd_per_mtok = 0.28, out_usd_per_mtok = 1.12 }   # 会计口径，非报价
+compat = { max_tokens = 1200 }
+
+# 本地 vLLM / llama-server：无需 key，loopback 即可
+# [llm.providers.local]
+# kind = "openai-compatible"
+# base_url = "http://127.0.0.1:8000/v1"
+# model = "qwen3"
+# billing = "gpu_seconds"
+
+[gen]
+# 几何由谁生成。当前版本只有参数化算子与 trimesh 物化，没有外部生成服务。
+default = "local-parametric"
+
+[gen.providers.local]
+kind = "local-parametric"
+
+# 插件（契约 §6）：列出的模块会被 import，并要求模块级 register(host) 或
+# `api_version = "1"`。新增模块（DiT 适配器、case memory、自我迭代机制）不需要改内核。
+# [plugins]
+# modules = ["mypkg.dit_adapter", "mypkg.case_memory"]

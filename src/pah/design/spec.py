@@ -238,6 +238,15 @@ class FitConstraints(_Frozen):
     compares the built clearance against them and says nothing about what the
     band "should" be. `target_fit` is recorded so a report can name the intent
     without re-deriving it from the numbers.
+
+    `print_orientation_deg` is `None` by default, and that is a deliberate
+    statement rather than a missing feature: **an overhang claim needs an
+    orientation**. Judging the insert while it stands in its assembled pose — tip
+    down, in mid-air — declares every peg unprintable for a defect no repair
+    operator can address. With `None`, the printability verifier checks wall
+    thickness (orientation independent) and does not evaluate overhang; the report
+    says so under `manufacturing_validated: not evaluated`, which is a different
+    claim from "printable" (§6 of `pah-dev-doc-v1.md` keeps those apart).
     """
 
     min_clearance_mm: float = Field(default=0.10, ge=0.0)
@@ -245,6 +254,9 @@ class FitConstraints(_Frozen):
     min_wall_mm: float = Field(default=1.2, gt=0.0)
     process: Literal["fdm", "sla", "sls", "cnc"] = "fdm"
     target_fit: Literal["slip", "snug", "press"] = "slip"
+    #: The build direction in the part's own frame, as a rotation in degrees about
+    #: its local origin. `None` = no manufacturing evaluation is being claimed.
+    print_orientation_deg: Vec3 | None = None
 
     @model_validator(mode="after")
     def _ordered_band(self) -> FitConstraints:
