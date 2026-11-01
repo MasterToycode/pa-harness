@@ -34,11 +34,16 @@ RESULTS_SCHEMA = "pah-eval-rows/1"
 
 #: The outcome column, then the budget columns, then the health columns. Order is
 #: the reading order of a comparison table; the grouping is what keeps them apart.
+#: `charged` is what the engine's ledger recorded on rounds; `verified` is the
+#: cascade's own meter, which also counts the verification an episode does before its
+#: first round. Both are reported because a 0-round repair charged nothing and still
+#: built triangles — printing only one of them lets a reader conclude either way.
 _HEADER = (
-    "| policy | cells | repaired_by_policy | mean_rounds | mean_geom_calls "
-    "| mean_sim_calls | environment_errors | unknown | harness_errors |"
+    "| policy | cells | repaired_by_policy | mean_rounds | mean_geom_charged "
+    "| mean_geom_verified | mean_sim_charged | mean_sim_verified "
+    "| environment_errors | unknown | harness_errors |"
 )
-_RULE = "|---|---|---|---|---|---|---|---|---|"
+_RULE = "|---|---|---|---|---|---|---|---|---|---|---|"
 
 
 def write_results(path: str | Path, rows: Sequence[dict[str, Any]]) -> Path:
@@ -114,7 +119,9 @@ def summary_markdown(
                     _ratio(sum(1 for row in cells if row["repaired_by_policy"]), len(cells)),
                     _mean(row["rounds"] for row in cells),
                     _mean(row["geom_calls_charged"] for row in cells),
+                    _mean(row["verifier_geom_calls"] for row in cells),
                     _mean(row["sim_calls_charged"] for row in cells),
+                    _mean(row["verifier_sim_calls"] for row in cells),
                     str(sum(row["environment_errors"] or 0 for row in cells)),
                     str(sum(row["unknown"] or 0 for row in cells)),
                     str(len(failures)),

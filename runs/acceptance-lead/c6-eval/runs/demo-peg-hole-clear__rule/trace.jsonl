@@ -1,3 +1,0 @@
-{"seq": 1, "at": "2026-11-01T13:37:27.803802+00:00", "kind": "episode.begin", "ticket": "30302d2f8ec7dd802996835a4d7449d7", "policy": "rule", "assembly": "30302d2f8ec7dd802996835a4d7449d7"}
-{"seq": 2, "at": "2026-11-01T13:37:28.177799+00:00", "kind": "verify", "ticket": "30302d2f8ec7dd802996835a4d7449d7", "phase": "before", "codes": [], "physical": 0, "verified": true}
-{"seq": 3, "at": "2026-11-01T13:37:28.178881+00:00", "kind": "ticket.end", "ticket": "30302d2f8ec7dd802996835a4d7449d7", "outcome": "repaired", "reason": "no physical failure", "rounds": 0, "geom_calls": 0, "sim_calls": 0}

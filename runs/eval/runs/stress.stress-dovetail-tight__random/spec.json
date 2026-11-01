@@ -1,0 +1,78 @@
+{
+  "spec_id": "stress-dovetail-tight",
+  "requirement": "A dovetail with zero clearance: it cannot slide.",
+  "parts": [
+    {
+      "id": "body",
+      "role": "body",
+      "size_mm": [
+        60.0,
+        40.0,
+        16.0
+      ],
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    },
+    {
+      "id": "insert",
+      "role": "insert",
+      "size_mm": [
+        20.0,
+        30.0,
+        12.0
+      ],
+      "pose_mm": [
+        10.0,
+        0.0,
+        8.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "iface_0",
+      "kind": "dovetail",
+      "a": "body",
+      "b": "insert",
+      "params": {
+        "width_mm": 10.0,
+        "depth_mm": 6.0,
+        "angle_deg": 12.0,
+        "clearance_mm": 0.35,
+        "engage_mm": 20.0,
+        "approach_mm": 22.0
+      }
+    }
+  ],
+  "constraints": {
+    "min_clearance_mm": 0.1,
+    "max_clearance_mm": 0.6,
+    "min_wall_mm": 1.2,
+    "process": "fdm",
+    "target_fit": "slip",
+    "print_orientation_deg": null
+  },
+  "revision": 7,
+  "provenance": {
+    "via": "scripts/make_stress_suite.py",
+    "base": "demo-dovetail.json",
+    "severity": "deliberately broken",
+    "pose": "builder:dovetail.seated_pose_mm"
+  },
+  "api_version": "1"
+}

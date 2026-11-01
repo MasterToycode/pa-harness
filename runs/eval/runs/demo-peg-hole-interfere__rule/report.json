@@ -11,7 +11,7 @@
     "inject_fault": null,
     "stop_after_round": null,
     "status": "completed",
-    "wall_s": 1.417
+    "wall_s": 1.436
   },
   "ticket": {
     "id": "f3603eee5aad50e03c1724644a551948",
@@ -85,9 +85,16 @@
       "environment_errors": 0,
       "geom_calls": 11,
       "sim_calls": 2,
+      "llm_calls": 0,
+      "tokens": 0,
       "geom_hash": "9edff9d1287a0ca83b588eb524fa18b7"
     }
   ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
   "counts": {
     "repaired_by_policy": 1,
     "physical_failures_final": 0,

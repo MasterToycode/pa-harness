@@ -1,0 +1,196 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__random",
+    "policy": "random",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.078
+  },
+  "ticket": {
+    "id": "de4ac2b675721f78bed20e6ba48bf9d7",
+    "outcome": "exhausted",
+    "reason": "budget spent"
+  },
+  "episode": {
+    "verdict": "exhausted",
+    "reason": "budget spent",
+    "rounds": 2
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 2,
+      "left": 0
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 17,
+      "left": 0
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 0,
+      "left": 8
+    },
+    "verifier_spend": {
+      "geom_calls": 15,
+      "sim_calls": 0
+    },
+    "rounds_produced": 2,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-snap-fit-swelled",
+    "kind": "snap_fit",
+    "requirement": "A hook wider than the slot it must pass through.",
+    "initial_content_key": "sha256:840cf9c8f714174947ee96edc55d9822",
+    "final_content_key": "sha256:6af88c2343e299706114cffb590ff9ed",
+    "initial_clearance_mm": -0.35,
+    "final_clearance_mm": -0.2085,
+    "final_revision": 5,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-snap-fit.json",
+      "severity": "deliberately broken",
+      "pose": "builder:snap_fit.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "shift_part",
+      "params": {
+        "delta_mm": [
+          2.8,
+          2.936,
+          -0.858
+        ],
+        "part_id": "insert"
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.946898",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "geometric_interference",
+        "insertion_path_blocked",
+        "insufficient_clearance"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 0,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "f85979720d6ae74d69121cd41939df91"
+    },
+    {
+      "index": 1,
+      "operator": "resize_feature",
+      "params": {
+        "delta_mm": 0.283,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.810460",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "geometric_interference",
+        "insertion_path_blocked",
+        "insufficient_clearance"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 6,
+      "sim_calls": 0,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "fe70ced3459363106fa0f2b4d61b6619"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 0,
+    "physical_failures_final": 3,
+    "final_codes": [
+      "geometric_interference",
+      "insertion_path_blocked",
+      "insufficient_clearance"
+    ],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 1.822x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__random\\trace.jsonl",
+    "rows": 13,
+    "replay_hashes": [
+      "f85979720d6ae74d69121cd41939df91",
+      "fe70ced3459363106fa0f2b4d61b6619"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__random\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__random\\geometry\\body.stl",
+        "hash": "sha256:7b2d957a470ff1f6f1e9ee8d4559ad32",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__random\\geometry\\insert.stl",
+        "hash": "sha256:5b5b379d5e88d0c05c016e7433757187",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

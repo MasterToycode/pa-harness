@@ -1,0 +1,157 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\demo-llm",
+    "policy": "llm",
+    "rounds_requested": 3,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 2.318
+  },
+  "ticket": {
+    "id": "e522c9b4e4acab6a131415c88847adbb",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 3,
+      "used": 1,
+      "left": 2
+    },
+    "geom_calls": {
+      "budget": 24,
+      "charged": 11,
+      "left": 13
+    },
+    "sim_calls": {
+      "budget": 12,
+      "charged": 2,
+      "left": 10
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 2
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "demo-peg-hole-interfere",
+    "kind": "peg_hole",
+    "requirement": "A 20 mm peg plate must seat on the floor of an 8 mm-deep blind 10 mm socket in a 60x40x12 plate. The peg is ordered 0.1 mm oversized per side, which is the deliberate defect the loop has to find and repair.",
+    "initial_content_key": "sha256:e94f729b9cab58dba5bc715cf2db0e1d",
+    "final_content_key": "sha256:e1c1417903d10610c7afcba5012510ba",
+    "initial_clearance_mm": -0.1,
+    "final_clearance_mm": 0.35,
+    "final_revision": 2,
+    "provenance": {
+      "interface_kind": "fixture:hand",
+      "params": "fixture:hand",
+      "why": "the proposal's peg 10.2 / hole 10.0 demo; negative clearance and an oversized peg"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "llm",
+      "reason": "insufficient_clearance: peg is 0.1 mm oversized per side; set radial clearance to the middle of the [0.10, 0.60] band to also clear interference, insertion path, and dynamic penetration.",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "llm_calls": 1,
+      "tokens": 4254,
+      "geom_hash": "9edff9d1287a0ca83b588eb524fa18b7"
+    }
+  ],
+  "llm": {
+    "calls": 1,
+    "tokens": 4254,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 1,
+    "not_evaluated_by": [
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge"
+    }
+  },
+  "trace": {
+    "path": "runs\\demo-llm\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "9edff9d1287a0ca83b588eb524fa18b7"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\demo-llm\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\demo-llm\\geometry\\body.stl",
+        "hash": "sha256:2dcf8cf45decadca1a020e9b677ebfa8",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\demo-llm\\geometry\\insert.stl",
+        "hash": "sha256:8f4144919de94b10f39b9dc686ef0abe",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

@@ -1,0 +1,158 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__rule",
+    "policy": "rule",
+    "rounds_requested": 3,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 1.211
+  },
+  "ticket": {
+    "id": "2a0dc583da62f6b69cb1f1cbb0228ead",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 3,
+      "used": 1,
+      "left": 2
+    },
+    "geom_calls": {
+      "budget": 24,
+      "charged": 11,
+      "left": 13
+    },
+    "sim_calls": {
+      "budget": 12,
+      "charged": 2,
+      "left": 10
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 2
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-peg-hole-oversize",
+    "kind": "peg_hole",
+    "requirement": "A peg 1.4 mm larger than its socket: the classic press-fit-gone-wrong.",
+    "initial_content_key": "sha256:5cbd0ec749ee183252fd8ad5e1d1b141",
+    "final_content_key": "sha256:eb8017f373c1e80799d092dc1bfebf0e",
+    "initial_clearance_mm": -0.7,
+    "final_clearance_mm": 0.35,
+    "final_revision": 4,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-peg-hole-interfere.json",
+      "severity": "deliberately broken",
+      "pose": "builder:peg_hole.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "insufficient_clearance -> set_clearance",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "ca2e14673cc7eca1c796209e5b23e394"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 1,
+    "not_evaluated_by": [
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge"
+    }
+  },
+  "trace": {
+    "path": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__rule\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "ca2e14673cc7eca1c796209e5b23e394"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__rule\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__rule\\geometry\\body.stl",
+        "hash": "sha256:9228efd0b15419734f9f9bc5a68d2857",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__rule\\geometry\\insert.stl",
+        "hash": "sha256:8fd4327f2394947c18c5904922f93015",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

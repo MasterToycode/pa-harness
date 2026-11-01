@@ -1,0 +1,79 @@
+{
+  "spec_id": "stress-snap-fit-swelled",
+  "requirement": "A hook wider than the slot it must pass through.",
+  "parts": [
+    {
+      "id": "body",
+      "role": "body",
+      "size_mm": [
+        60.0,
+        40.0,
+        12.0
+      ],
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    },
+    {
+      "id": "insert",
+      "role": "insert",
+      "size_mm": [
+        8.0,
+        8.0,
+        14.0
+      ],
+      "pose_mm": [
+        0.0,
+        0.0,
+        -3.0
+      ],
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "material": "PLA"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "iface_0",
+      "kind": "snap_fit",
+      "a": "body",
+      "b": "insert",
+      "params": {
+        "hook_w_mm": 4.9,
+        "hook_h_mm": 1.0,
+        "beam_len_mm": 12.0,
+        "beam_thk_mm": 1.6,
+        "slot_w_mm": 4.2,
+        "engage_mm": 8.0,
+        "approach_mm": 12.0
+      }
+    }
+  ],
+  "constraints": {
+    "min_clearance_mm": 0.1,
+    "max_clearance_mm": 0.6,
+    "min_wall_mm": 1.2,
+    "process": "fdm",
+    "target_fit": "slip",
+    "print_orientation_deg": null
+  },
+  "revision": 3,
+  "provenance": {
+    "via": "scripts/make_stress_suite.py",
+    "base": "demo-snap-fit.json",
+    "severity": "deliberately broken",
+    "pose": "builder:snap_fit.seated_pose_mm"
+  },
+  "api_version": "1"
+}

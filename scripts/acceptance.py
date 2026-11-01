@@ -222,10 +222,17 @@ def check_eval_columns(root: Path) -> dict:
     if proc.returncode not in (0, 1) or not (out / "results.jsonl").exists():
         return _result("6 eval keeps its columns", False, f"exit {proc.returncode}: {proc.stderr.strip()[:400]}")
     summary = (out / "summary.md").read_text("utf-8")
-    rows = [json.loads(line) for line in (out / "results.jsonl").read_text("utf-8").splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in (out / "results.jsonl").read_text("utf-8").splitlines()
+        if line.strip()
+    ]
+    # The first line is a `{"schema": ...}` manifest, not a cell; counting it would
+    # report one more experiment than ran.
+    cells = [row for row in rows if row.get("policy") or row.get("verdict")]
     merged_claim = "success_rate" in summary or "成功率" in summary
     ok = (
-        bool(rows)
+        bool(cells)
         and ("repaired" in summary)
         and ("environment_errors" in summary or "environment" in summary)
         and not merged_claim
@@ -233,7 +240,7 @@ def check_eval_columns(root: Path) -> dict:
     return _result(
         "6 eval keeps its columns",
         ok,
-        f"cells={len(rows)} columns_ok={ok} merged_success_rate_column={merged_claim}",
+        f"cells={len(cells)} columns_ok={ok} merged_success_rate_column={merged_claim}",
     )
 
 

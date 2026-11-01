@@ -1,0 +1,188 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__random",
+    "policy": "random",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.199
+  },
+  "ticket": {
+    "id": "306198e5c4df59d4e578ae93cd58f47e",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 2
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 2,
+      "left": 0
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 17,
+      "left": 0
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 1,
+      "left": 7
+    },
+    "verifier_spend": {
+      "geom_calls": 15,
+      "sim_calls": 1
+    },
+    "rounds_produced": 2,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-dovetail-tight",
+    "kind": "dovetail",
+    "requirement": "A dovetail with zero clearance: it cannot slide.",
+    "initial_content_key": "sha256:ff0cb84715c4dd41cfb59fcfd6905d18",
+    "final_content_key": "sha256:d9969295630a1da2a370633c17b1d131",
+    "initial_clearance_mm": 0.0,
+    "final_clearance_mm": 0.35,
+    "final_revision": 7,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-dovetail.json",
+      "severity": "deliberately broken",
+      "pose": "builder:dovetail.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "switch_connector",
+      "params": {
+        "interface_id": "iface_0",
+        "kind": "peg_hole",
+        "params": {},
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.342115",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "joint_unstable"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 1,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "2441a2975c05e5c4450549b02c83ae28"
+    },
+    {
+      "index": 1,
+      "operator": "switch_connector",
+      "params": {
+        "interface_id": "iface_0",
+        "kind": "dovetail",
+        "params": {},
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.925186",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 6,
+      "sim_calls": 0,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "a201838cde95edd070e3aacd446f0950"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 1.244x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__random\\trace.jsonl",
+    "rows": 12,
+    "replay_hashes": [
+      "2441a2975c05e5c4450549b02c83ae28",
+      "a201838cde95edd070e3aacd446f0950"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__random\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__random\\geometry\\body.stl",
+        "hash": "sha256:f2f0cf2297487482e580c4624b97fcba",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__random\\geometry\\insert.stl",
+        "hash": "sha256:3a4dbed0b7040a31e7d8019444e482dd",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

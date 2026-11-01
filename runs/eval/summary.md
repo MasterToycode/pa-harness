@@ -1,9 +1,9 @@
 # PAH v2 evaluation — design plane
 
-- suite: `fixtures\design`
+- suite: `fixtures/design`
 - policies: `rule`, `random`
 - rounds per episode: **3** (equal budget for every cell)
-- cells: 8 (8 completed, 0 harness errors)
+- cells: 16 (16 completed, 0 harness errors)
 
 ## 口径（读数字之前先读这一段）
 
@@ -14,10 +14,10 @@
 
 ## Per policy
 
-| policy | cells | repaired_by_policy | mean_rounds | mean_geom_calls | mean_sim_calls | environment_errors | unknown | harness_errors |
-|---|---|---|---|---|---|---|---|---|
-| `rule` | 4 | 4/4 (100.0%) | 0.25 | 2.75 | 0.50 | 0 | 0 | 0 |
-| `random` | 4 | 4/4 (100.0%) | 0.25 | 2.75 | 0.25 | 0 | 0 | 0 |
+| policy | cells | repaired_by_policy | mean_rounds | mean_geom_charged | mean_geom_verified | mean_sim_charged | mean_sim_verified | environment_errors | unknown | harness_errors |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `rule` | 8 | 8/8 (100.0%) | 0.62 | 6.88 | 8.12 | 0.75 | 0.88 | 0 | 0 | 0 |
+| `random` | 8 | 6/8 (75.0%) | 1.25 | 10.62 | 11.25 | 0.88 | 1.00 | 0 | 0 | 0 |
 
 ## Per case
 
@@ -27,6 +27,10 @@
 | `demo-peg-hole-clear` | peg_hole | 7 | repaired | repaired |
 | `demo-peg-hole-interfere` | peg_hole | 7 | repaired | repaired |
 | `demo-snap-fit` | snap_fit | 7 | repaired | repaired |
+| `stress.stress-dovetail-tight` | dovetail | 6 | repaired | repaired |
+| `stress.stress-peg-hole-loose` | peg_hole | 7 | repaired | repaired |
+| `stress.stress-peg-hole-oversize` | peg_hole | 7 | repaired | exhausted |
+| `stress.stress-snap-fit-swelled` | snap_fit | 7 | repaired | exhausted |
 
 ## How to read one cell
 

@@ -1086,10 +1086,21 @@ class Runtime:
                     ),
                     "geom_calls": rnd.cost.geom_calls,
                     "sim_calls": rnd.cost.sim_calls,
+                    "llm_calls": rnd.cost.llm_calls,
+                    "tokens": rnd.cost.tokens,
                     "geom_hash": rnd.artifacts.get("geom_hash", ""),
                 }
                 for rnd in rounds
             ],
+            "llm": {
+                # What the decision layer cost, summed from closed rounds. Money is
+                # not re-derived here: the provider adapter declares its billing unit
+                # (`Usage.billing`) and only `per_token` has a price, so calls and
+                # tokens are the comparable numbers across providers.
+                "calls": sum(rnd.cost.llm_calls for rnd in rounds),
+                "tokens": sum(rnd.cost.tokens for rnd in rounds),
+                "billing_note": "calls and tokens are the comparison unit; money is provider-declared",
+            },
             "counts": {
                 # Whether the *policy* closed the loop on this design. Not a dataset
                 # yield, and never added to the two columns below.

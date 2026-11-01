@@ -1,0 +1,158 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\eval-stress\\runs\\stress-peg-hole-loose__rule",
+    "policy": "rule",
+    "rounds_requested": 3,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.729
+  },
+  "ticket": {
+    "id": "d6482338d14a6f23e6a08de296043d00",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 3,
+      "used": 1,
+      "left": 2
+    },
+    "geom_calls": {
+      "budget": 24,
+      "charged": 11,
+      "left": 13
+    },
+    "sim_calls": {
+      "budget": 12,
+      "charged": 2,
+      "left": 10
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 2
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-peg-hole-loose",
+    "kind": "peg_hole",
+    "requirement": "A peg that wobbles: 0.9 mm of radial clearance in a slot designed for slip fit.",
+    "initial_content_key": "sha256:7416fbe28ea6e3d58b0c5cfd63a299a4",
+    "final_content_key": "sha256:8811f52c9f1096f0751e1ea5838ba788",
+    "initial_clearance_mm": 0.9,
+    "final_clearance_mm": 0.100001,
+    "final_revision": 4,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-peg-hole-clear.json",
+      "severity": "deliberately broken",
+      "pose": "builder:peg_hole.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.100001,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "excessive_clearance -> set_clearance",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "9dd0e635d60ae1b1e84825b85eaf4148"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 1,
+    "not_evaluated_by": [
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge"
+    }
+  },
+  "trace": {
+    "path": "runs\\eval-stress\\runs\\stress-peg-hole-loose__rule\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "9dd0e635d60ae1b1e84825b85eaf4148"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\eval-stress\\runs\\stress-peg-hole-loose__rule\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\eval-stress\\runs\\stress-peg-hole-loose__rule\\geometry\\body.stl",
+        "hash": "sha256:e3f0997f6ca8f5e6f80051bcd905fcfb",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\eval-stress\\runs\\stress-peg-hole-loose__rule\\geometry\\insert.stl",
+        "hash": "sha256:fe45b59a6d1a620657c9d7424921a04a",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

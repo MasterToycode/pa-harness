@@ -1,3 +1,3 @@
-{"seq": 1, "at": "2026-11-01T13:35:56.143358+00:00", "kind": "episode.begin", "ticket": "13d0c631abcde352afedb12ba7ff85c1", "policy": "random", "assembly": "13d0c631abcde352afedb12ba7ff85c1"}
-{"seq": 2, "at": "2026-11-01T13:35:56.163816+00:00", "kind": "verify", "ticket": "13d0c631abcde352afedb12ba7ff85c1", "phase": "before", "codes": [], "physical": 0, "verified": true}
-{"seq": 3, "at": "2026-11-01T13:35:56.164709+00:00", "kind": "ticket.end", "ticket": "13d0c631abcde352afedb12ba7ff85c1", "outcome": "repaired", "reason": "no physical failure", "rounds": 0, "geom_calls": 0, "sim_calls": 0}
+{"seq": 1, "at": "2026-11-01T13:44:52.183618+00:00", "kind": "episode.begin", "ticket": "13d0c631abcde352afedb12ba7ff85c1", "policy": "random", "assembly": "13d0c631abcde352afedb12ba7ff85c1"}
+{"seq": 2, "at": "2026-11-01T13:44:52.204095+00:00", "kind": "verify", "ticket": "13d0c631abcde352afedb12ba7ff85c1", "phase": "before", "codes": [], "physical": 0, "verified": true}
+{"seq": 3, "at": "2026-11-01T13:44:52.204902+00:00", "kind": "ticket.end", "ticket": "13d0c631abcde352afedb12ba7ff85c1", "outcome": "repaired", "reason": "no physical failure", "rounds": 0, "geom_calls": 0, "sim_calls": 0}

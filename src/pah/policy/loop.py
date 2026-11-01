@@ -393,9 +393,11 @@ class RepairLoop:
                 ticket=ticket.id,
                 round=closed.index,
                 verdict=verdict,
-                geom_calls=plan.cost_est.geom_calls,
-                sim_calls=plan.cost_est.sim_calls,
-            geom_hash=assembly_fingerprint(new_assembly),
+                geom_calls=charged.geom_calls,
+                sim_calls=charged.sim_calls,
+                llm_calls=charged.llm_calls,
+                tokens=charged.tokens,
+                geom_hash=assembly_fingerprint(new_assembly),
             )
 
             if verdict == "pass":

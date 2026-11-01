@@ -11,7 +11,7 @@
     "inject_fault": null,
     "stop_after_round": null,
     "status": "completed",
-    "wall_s": 0.347
+    "wall_s": 0.354
   },
   "ticket": {
     "id": "30302d2f8ec7dd802996835a4d7449d7",
@@ -66,6 +66,11 @@
     ]
   },
   "rounds": [],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
   "counts": {
     "repaired_by_policy": 1,
     "physical_failures_final": 0,

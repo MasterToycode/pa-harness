@@ -1,0 +1,158 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\acceptance\\c6-eval\\runs\\stress.stress-peg-hole-loose__random",
+    "policy": "random",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.637
+  },
+  "ticket": {
+    "id": "9a2e3f77a19c4e2b54c1ddb7ead2e57d",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 1,
+      "left": 1
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 11,
+      "left": 5
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 2,
+      "left": 6
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 2
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-peg-hole-loose",
+    "kind": "peg_hole",
+    "requirement": "A peg that wobbles: 0.9 mm of radial clearance in a slot designed for slip fit.",
+    "initial_content_key": "sha256:7416fbe28ea6e3d58b0c5cfd63a299a4",
+    "final_content_key": "sha256:d97cae59f30242c88a15da29feb5d9b8",
+    "initial_clearance_mm": 0.9,
+    "final_clearance_mm": 0.519,
+    "final_revision": 4,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-peg-hole-clear.json",
+      "severity": "deliberately broken",
+      "pose": "builder:peg_hole.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.519,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.700809",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "c1782d32885980e46ddc6a69f9c04435"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 1,
+    "not_evaluated_by": [
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge"
+    }
+  },
+  "trace": {
+    "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-peg-hole-loose__random\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "c1782d32885980e46ddc6a69f9c04435"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\acceptance\\c6-eval\\runs\\stress.stress-peg-hole-loose__random\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-peg-hole-loose__random\\geometry\\body.stl",
+        "hash": "sha256:bcc717843e4d3b0dd71b56bbdecceed8",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-peg-hole-loose__random\\geometry\\insert.stl",
+        "hash": "sha256:662a102c683520b8fef493c7c351f019",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

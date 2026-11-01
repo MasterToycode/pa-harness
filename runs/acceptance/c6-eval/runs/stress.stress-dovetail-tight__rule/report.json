@@ -1,0 +1,160 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__rule",
+    "policy": "rule",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.096
+  },
+  "ticket": {
+    "id": "5d7bd6e6e9bf123707c721c6ddb0a4d4",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 1,
+      "left": 1
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 11,
+      "left": 5
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 0,
+      "left": 8
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 0
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-dovetail-tight",
+    "kind": "dovetail",
+    "requirement": "A dovetail with zero clearance: it cannot slide.",
+    "initial_content_key": "sha256:ff0cb84715c4dd41cfb59fcfd6905d18",
+    "final_content_key": "sha256:d9969295630a1da2a370633c17b1d131",
+    "initial_clearance_mm": 0.0,
+    "final_clearance_mm": 0.35,
+    "final_revision": 4,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-dovetail.json",
+      "severity": "deliberately broken",
+      "pose": "builder:dovetail.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "insufficient_clearance -> set_clearance",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 0,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "a201838cde95edd070e3aacd446f0950"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 1.244x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__rule\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "a201838cde95edd070e3aacd446f0950"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__rule\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__rule\\geometry\\body.stl",
+        "hash": "sha256:f2f0cf2297487482e580c4624b97fcba",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-dovetail-tight__rule\\geometry\\insert.stl",
+        "hash": "sha256:3a4dbed0b7040a31e7d8019444e482dd",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

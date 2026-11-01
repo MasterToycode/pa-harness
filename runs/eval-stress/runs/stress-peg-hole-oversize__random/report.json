@@ -1,0 +1,230 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__random",
+    "policy": "random",
+    "rounds_requested": 3,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 2.37
+  },
+  "ticket": {
+    "id": "c95bdfdcdd102317b62795d42949a945",
+    "outcome": "exhausted",
+    "reason": "budget spent"
+  },
+  "episode": {
+    "verdict": "exhausted",
+    "reason": "budget spent",
+    "rounds": 3
+  },
+  "budget": {
+    "rounds": {
+      "budget": 3,
+      "used": 3,
+      "left": 0
+    },
+    "geom_calls": {
+      "budget": 24,
+      "charged": 23,
+      "left": 1
+    },
+    "sim_calls": {
+      "budget": 12,
+      "charged": 3,
+      "left": 9
+    },
+    "verifier_spend": {
+      "geom_calls": 20,
+      "sim_calls": 3
+    },
+    "rounds_produced": 3,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-peg-hole-oversize",
+    "kind": "snap_fit",
+    "requirement": "A peg 1.4 mm larger than its socket: the classic press-fit-gone-wrong.",
+    "initial_content_key": "sha256:5cbd0ec749ee183252fd8ad5e1d1b141",
+    "final_content_key": "sha256:320d2d56c5876964c529de8f84d12f74",
+    "initial_clearance_mm": -0.7,
+    "final_clearance_mm": 0.35,
+    "final_revision": 7,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-peg-hole-interfere.json",
+      "severity": "deliberately broken",
+      "pose": "builder:peg_hole.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "resize_insert",
+      "params": {
+        "delta_mm": 0.081,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.217204",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "dynamic_penetration",
+        "geometric_interference",
+        "insertion_path_blocked",
+        "insufficient_clearance"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "c8309d783c50d954491cb6dda9301e18"
+    },
+    {
+      "index": 1,
+      "operator": "regenerate_interface",
+      "params": {
+        "interface_id": "iface_0",
+        "params": {
+          "approach_mm": 10.0,
+          "d_hole_mm": 12.181,
+          "d_peg_mm": 11.481,
+          "engage_mm": 9.82,
+          "feature_xy_mm": [
+            0.0,
+            0.0
+          ],
+          "peg_len_mm": null
+        },
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.921389",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "dynamic_penetration"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 6,
+      "sim_calls": 1,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "df260f65838bef68f825c3fb9d3586bd"
+    },
+    {
+      "index": 2,
+      "operator": "switch_connector",
+      "params": {
+        "interface_id": "iface_0",
+        "kind": "snap_fit",
+        "params": {},
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "random:0.618429",
+      "verdict": "fail",
+      "stage": "judged",
+      "codes": [
+        "below_min_wall"
+      ],
+      "environment_errors": 0,
+      "geom_calls": 6,
+      "sim_calls": 0,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "748bc00947f99403ff58a81df10685b1"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 0,
+    "physical_failures_final": 1,
+    "final_codes": [
+      "below_min_wall"
+    ],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 2.932x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__random\\trace.jsonl",
+    "rows": 18,
+    "replay_hashes": [
+      "c8309d783c50d954491cb6dda9301e18",
+      "df260f65838bef68f825c3fb9d3586bd",
+      "748bc00947f99403ff58a81df10685b1"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__random\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__random\\geometry\\body.stl",
+        "hash": "sha256:f40441ec3c4c7e80030178c819a58bb7",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\eval-stress\\runs\\stress-peg-hole-oversize__random\\geometry\\insert.stl",
+        "hash": "sha256:271f855d6408688a4b87418b32bf9d93",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

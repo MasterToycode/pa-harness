@@ -1,0 +1,160 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__rule",
+    "policy": "rule",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.053
+  },
+  "ticket": {
+    "id": "58953c9037e023ff005741c9078b579f",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 1,
+      "left": 1
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 11,
+      "left": 5
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 0,
+      "left": 8
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 0
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "stress-snap-fit-swelled",
+    "kind": "snap_fit",
+    "requirement": "A hook wider than the slot it must pass through.",
+    "initial_content_key": "sha256:840cf9c8f714174947ee96edc55d9822",
+    "final_content_key": "sha256:04c2ef4ee2b4be0eab96c4c2fce4379e",
+    "initial_clearance_mm": -0.35,
+    "final_clearance_mm": 0.35,
+    "final_revision": 4,
+    "provenance": {
+      "via": "scripts/make_stress_suite.py",
+      "base": "demo-snap-fit.json",
+      "severity": "deliberately broken",
+      "pose": "builder:snap_fit.seated_pose_mm"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "rule",
+      "reason": "insufficient_clearance -> set_clearance",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 0,
+      "llm_calls": 0,
+      "tokens": 0,
+      "geom_hash": "60846cd346e82401112122f30cdd10e4"
+    }
+  ],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 2,
+    "not_evaluated_by": [
+      "physics_settle",
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge",
+      "physics_settle": "physics not evaluated: non_convex_insert: convex hull is 1.822x the solid; MuJoCo collides a mesh as its hull, which would average away the very undercut that retains this joint"
+    }
+  },
+  "trace": {
+    "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__rule\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "60846cd346e82401112122f30cdd10e4"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__rule\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__rule\\geometry\\body.stl",
+        "hash": "sha256:09bc6112cd3437c857c7e678c8372f4a",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\acceptance\\c6-eval\\runs\\stress.stress-snap-fit-swelled__rule\\geometry\\insert.stl",
+        "hash": "sha256:05a0bc88cc01d7bbbe4f0993eabefda2",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}

@@ -66,6 +66,11 @@
     ]
   },
   "rounds": [],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
   "counts": {
     "repaired_by_policy": 1,
     "physical_failures_final": 0,

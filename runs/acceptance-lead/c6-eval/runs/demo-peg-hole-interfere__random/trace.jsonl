@@ -1,7 +1,0 @@
-{"seq": 1, "at": "2026-11-01T13:37:35.439218+00:00", "kind": "episode.begin", "ticket": "506b5887447c0687a3865386c44b4e24", "policy": "random", "assembly": "506b5887447c0687a3865386c44b4e24"}
-{"seq": 2, "at": "2026-11-01T13:37:36.496221+00:00", "kind": "verify", "ticket": "506b5887447c0687a3865386c44b4e24", "phase": "before", "codes": ["insufficient_clearance", "geometric_interference", "insertion_path_blocked", "dynamic_penetration"], "physical": 4, "verified": true}
-{"seq": 3, "at": "2026-11-01T13:37:36.497026+00:00", "kind": "round.begin", "ticket": "506b5887447c0687a3865386c44b4e24", "round": 0, "operator": "switch_connector", "targets": ["body", "insert"], "policy": "random"}
-{"seq": 4, "at": "2026-11-01T13:37:36.500148+00:00", "kind": "round.stage", "round": 0, "stage": "materialized", "spec": "sha256:ac785af8cbb49d14ca2dca370f1f60b3", "revision": 3}
-{"seq": 5, "at": "2026-11-01T13:37:36.552531+00:00", "kind": "verify", "ticket": "506b5887447c0687a3865386c44b4e24", "phase": "after", "codes": [], "physical": 0, "verified": true}
-{"seq": 6, "at": "2026-11-01T13:37:36.555242+00:00", "kind": "round.close", "ticket": "506b5887447c0687a3865386c44b4e24", "round": 0, "verdict": "pass", "geom_calls": 1, "sim_calls": 0, "geom_hash": "f42cb3c40f3efd1a8fa9436a9975b84e"}
-{"seq": 7, "at": "2026-11-01T13:37:36.556442+00:00", "kind": "ticket.end", "ticket": "506b5887447c0687a3865386c44b4e24", "outcome": "repaired", "reason": "verified after repair", "rounds": 1, "geom_calls": 11, "sim_calls": 1}
