@@ -75,6 +75,7 @@ PAH **不是**：新的 3D 生成模型；CAD 前端；某个数据集的连接�
 | `operator` | `Operator`（v1 registry 同一形状） | 参数模型 + `apply(asm, params) -> Assembly`（纯 spec 编辑）+ `targets()` |
 | `policy` | `LoopPolicy.propose(...)` | 一个 `name` + 一个提议函数，返回 `RepairPlan \| None` |
 | `provider` | `LLMClient.complete(...)` | 走 `app/providers.py` 的注册表（不静默 fallback） |
+| `decomposer` | `Decomposer.decompose(whole) -> Decomposition` | 整体网格进、N 个水密件出；本地切分器与腾讯云 X-Part 都是这个接口（见 `docs/multi-part.md`） |
 
 加载：内置显式注册 / `pah.toml [plugins] modules` / Python entry points（group `pah.plugins`）；`pah plugins list` 可审计。详见 `docs/plugin-api.md`。
 
@@ -95,15 +96,18 @@ PAH **不是**：新的 3D 生成模型；CAD 前端；某个数据集的连接�
 src/pah/
 ├── core/          # model, engine, stage, ids, ports, errors   ← 不变量
 ├── app/           # store, effects, trace, providers, runtime    ← 组合与 I/O
-├── design/        # spec, api(冻结契约), connectors/, materialize
+├── design/        # spec, api(冻结契约), connectors/, materialize,
+│                  # decompose(Decomposer 端口), pairing, machining, pairs ← 多件
 ├── policy/        # loop, registry, rule, design_ops, design_policies, llm, case_memory
 ├── tools/
 │   ├── verifiers/ # base, connector_feasible(v1 冻结), fit, interference, path, printability, physics, design_cascade
+│   ├── fbx.py     # Blender 无头调用：STL/GLB ⇄ FBX（混元组件生成只收 FBX）
+│   ├── tencent_ai3d.py  # 组件生成 API 客户端（COS 上传 + submit/poll/download）
 │   ├── ivr.py, eps.py   ← v1 冻结
 │   └── physics/   # MuJoCo 沉降实验
 ├── eval/          # runner, report（等预算对比）
 ├── plugins.py     # 插件加载器
-└── cli/           # main, run, design, eval, plugins, probe(v1)
+└── cli/           # main, run, build, decompose, design, eval, export, fbx, plugins, probe(v1)
 ```
 
 ## 9. 验收（v2 第一版）

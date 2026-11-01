@@ -62,6 +62,30 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     )
     decompose.add_argument("--out", default=None, help="run directory (default runs/decompose-<ts>)")
     decompose.add_argument(
+        "--decomposer",
+        default="local",
+        help=(
+            "'local' (slab splitter, free), 'dir:<path>' (replay a downloaded X-Part "
+            "job, free), or 'xpart' (call 腾讯云 组件生成 — costs credits)"
+        ),
+    )
+    decompose.add_argument(
+        "--max-interfaces",
+        type=int,
+        default=12,
+        help=(
+            "how many joints to machine and verify (default 12). Every joint costs a "
+            "socket, a peg and a full verifier sweep, so a 19-part decomposition's 30 "
+            "contacts are capped rather than silently taking an hour"
+        ),
+    )
+    decompose.add_argument(
+        "--size-mm",
+        type=float,
+        default=None,
+        help="longest extent of the finished object in mm; X-Part answers in normalised units",
+    )
+    decompose.add_argument(
         "--orientation",
         default=None,
         help=(
@@ -88,10 +112,108 @@ def _orientation(text: str | None):
     return tuple(float(piece) for piece in pieces)  # type: ignore[return-value]
 
 
+def _example(name: str):
+    """Import `examples/<name>.py` by path: the paid adapters live outside the package.
+
+    They are not part of `pah` because they are *choices* — which vendor, which
+    model, whose credits — and a package that imports them at startup would make the
+    free path depend on the paid one's dependencies.
+    """
+    import importlib.util  # noqa: PLC0415
+    import sys  # noqa: PLC0415
+
+    path = Path(__file__).resolve().parents[3] / "examples" / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(f"_pah_example_{name}", path)
+    if spec is None or spec.loader is None:
+        raise SystemExit(f"cannot load example adapter at {path}")
+    module = importlib.util.module_from_spec(spec)
+    # Register before executing: `dataclasses.dataclass` looks the module up in
+    # `sys.modules` to resolve string annotations, and an exec without the
+    # registration dies with `'NoneType' object has no attribute '__dict__'`.
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _run_decomposer(kind: str, whole, args):
+    """Pick the decomposer the caller named, and say what it will cost."""
+    from pah.design.decompose import split_slabs  # noqa: PLC0415
+
+    if kind == "local":
+        return split_slabs(whole, count=args.parts, axis=_AXES[args.axis])
+
+    example = _example("xpart_decomposer")
+    if kind.startswith("dir:"):
+        directory = kind.split(":", 1)[1]
+        return example.load_decomposition_dir(directory, target_size_mm=args.size_mm)
+    if kind == "xpart":
+        print(
+            "  组件生成会消耗腾讯云积分：1 次组件任务"
+            + ("（+20 积分后处理）" if False else "")
+            + "。这一单提交后即计费，取消不会退款。"
+        )
+        return example.XPartDecomposer(target_size_mm=args.size_mm).decompose(whole)
+    raise SystemExit(
+        f"unknown --decomposer {kind!r}; use 'local', 'dir:<path>' or 'xpart'"
+    )
+
+
+def _largest_assembly(parts, interfaces):
+    """The biggest connected group of pieces, plus what it left behind.
+
+    A decomposition is allowed to return more pieces than we manage to connect — the
+    real X-Part run returned 19 and a capped pairing connected only a few of them. The
+    spec's own invariant refuses a part that no interface reaches (a part nothing
+    holds is a part nothing holds), and that invariant is right: the answer is not to
+    weaken it but to build the assembly that *is* connected and say which pieces were
+    left out.
+    """
+    adjacency: dict[str, set[str]] = {part.id: set() for part in parts}
+    for interface in interfaces:
+        adjacency[interface.a].add(interface.b)
+        adjacency[interface.b].add(interface.a)
+
+    seen: set[str] = set()
+    groups: list[set[str]] = []
+    for part in parts:
+        if part.id in seen:
+            continue
+        group: set[str] = set()
+        stack = [part.id]
+        while stack:
+            node = stack.pop()
+            if node in group:
+                continue
+            group.add(node)
+            stack.extend(adjacency[node] - group)
+        seen |= group
+        groups.append(group)
+
+    def score(group: set[str]) -> tuple[int, int]:
+        joints = sum(
+            1 for interface in interfaces if interface.a in group and interface.b in group
+        )
+        return joints, len(group)
+
+    best = max(groups, key=score) if groups else set()
+    kept = tuple(part for part in parts if part.id in best)
+    kept_interfaces = tuple(
+        interface
+        for interface in interfaces
+        if interface.a in best and interface.b in best
+    )
+    left = sorted(part.id for part in parts if part.id not in best)
+    return kept, kept_interfaces, left
+
+
 def _decompose(args: argparse.Namespace) -> int:
     import trimesh  # noqa: PLC0415
 
-    from pah.design.decompose import parts_from_decomposition, split_slabs, store_parts
+    from pah.design.decompose import (  # noqa: PLC0415
+        file_hash,
+        parts_from_decomposition,
+        store_parts,
+    )
     from pah.design.materialize import materialize
     from pah.design.pairing import propose_interfaces, spec_from_parts
     from pah.design.spec import FitConstraints
@@ -108,22 +230,38 @@ def _decompose(args: argparse.Namespace) -> int:
 
     whole = trimesh.load(source, force="mesh")
     try:
-        decomposition = split_slabs(whole, count=args.parts, axis=_AXES[args.axis])
+        decomposition = _run_decomposer(args.decomposer, whole, args)
     except ValueError as error:
         print(f"  cannot decompose {source.name}: {error}")
         return EXIT_NO
-    parts = parts_from_decomposition(decomposition)
-    pairing = propose_interfaces(parts, clearance_mm=args.clearance)
+    # Store the blanks before the spec exists: `PartSpec.source` names the *file*, so
+    # the file has to be written first. The alternative — hashing the mesh — looked
+    # equal and was not: STL's float32 coordinates move a 120 mm part by 4e-6 mm, and
+    # on a real X-Part job every one of the 19 parts then "failed" its own integrity
+    # check.
+    stored = store_parts(decomposition.parts, out)
+    sources = {part_id: file_hash(path) for part_id, path in stored.items()}
+
+    parts = parts_from_decomposition(decomposition, source_hashes=sources)
+    pairing = propose_interfaces(
+        parts, clearance_mm=args.clearance, limit=args.max_interfaces
+    )
     if not pairing.interfaces:
         print("  the decomposition produced no pair that can carry a connector:")
         print(f"    {pairing.reasons() or 'no pair of pieces is adjacent'}")
         return EXIT_NO
 
+    parts, interfaces, left_out = _largest_assembly(parts, pairing.interfaces)
+    if len(interfaces) == 0:
+        print("  no connected assembly could be built from this decomposition:")
+        print(f"    {len(parts)} piece(s) in the largest group, none joined")
+        return EXIT_NO
+
     spec = spec_from_parts(
         spec_id=f"decompose-{stamp}",
         parts=parts,
-        interfaces=pairing.interfaces,
-        requirement=f"{source.name} decomposed into {args.parts} printable pieces",
+        interfaces=interfaces,
+        requirement=f"{source.name} decomposed into {len(parts)} printable pieces",
         # The build orientation stays undeclared unless the caller states it. Wall
         # thickness is orientation independent and is still measured; overhang is not
         # evaluated, and the report says `printable: partial` rather than claiming a
@@ -132,10 +270,20 @@ def _decompose(args: argparse.Namespace) -> int:
         provenance={
             "decomposition": decomposition.provenance,
             "source_mesh": str(source),
+            **(
+                {
+                    "unconnected_parts": left_out,
+                    "note": (
+                        "these pieces came back from the decomposition but no interface "
+                        "reaches them, so they are not part of the reported assembly"
+                    ),
+                }
+                if left_out
+                else {}
+            ),
         },
     )
 
-    store_parts(decomposition.parts, out)
     design = materialize(spec, out)
 
     certificates: list = []
@@ -151,6 +299,15 @@ def _decompose(args: argparse.Namespace) -> int:
         certificates = cascade.check(design.assembly)
         notes = cascade.notes
         cost = cascade.spent
+    else:
+        # `--no-verify` must not read as "everything passed". Every registered check
+        # is recorded as not run, so the verdicts say `partial` with the full list.
+        from pah.tools.verifiers.design_cascade import default_registry  # noqa: PLC0415
+
+        notes = {
+            verifier_id: "verification skipped: this run was built with --no-verify"
+            for verifier_id in default_registry().ids()
+        }
 
     from pah.app.runtime import _verdicts  # noqa: PLC0415
 
@@ -178,6 +335,8 @@ def _decompose(args: argparse.Namespace) -> int:
             "seconds": round(time.time() - started, 2),
             "decomposer": decomposition.provenance,
             "parts": len(spec.parts),
+            "parts_returned": len(decomposition.parts),
+            "left_out": len(left_out),
             "interfaces": len(spec.interfaces),
             "clearance_mm": args.clearance,
             "verified": not args.no_verify,

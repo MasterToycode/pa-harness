@@ -33,6 +33,7 @@ from pah.design.decompose import (
     Decomposition,
     DecomposedPart,
     check_store,
+    file_hash,
     mesh_hash,
     parts_from_decomposition,
     split_slabs,
@@ -54,7 +55,12 @@ def plate() -> trimesh.Trimesh:
 def two_slabs(tmp_path: Path) -> tuple[DesignSpec, Path]:
     """The standard fixture: a plate cut in two along Z, pegged back together."""
     decomposition = split_slabs(plate(), count=2, axis=2)
-    parts = parts_from_decomposition(decomposition)
+    out = tmp_path / "run"
+    # The spec names the blank *file*, so the files are written first.
+    stored = store_parts(decomposition.parts, out)
+    parts = parts_from_decomposition(
+        decomposition, source_hashes={key: file_hash(path) for key, path in stored.items()}
+    )
     pairing = propose_interfaces(parts)
     spec = spec_from_parts(
         spec_id="two-slabs",
@@ -62,8 +68,6 @@ def two_slabs(tmp_path: Path) -> tuple[DesignSpec, Path]:
         interfaces=pairing.interfaces,
         constraints=FitConstraints(print_orientation_deg=(0.0, 0.0, 0.0)),
     )
-    out = tmp_path / "run"
-    store_parts(decomposition.parts, out)
     return spec, out
 
 
@@ -267,7 +271,11 @@ def test_each_pair_of_a_chain_is_judged_on_its_own(tmp_path):
     from pah.tools.verifiers.design_cascade import DesignVerifierCascade, default_registry
 
     decomposition = split_slabs(plate(), count=3, axis=2)
-    parts = parts_from_decomposition(decomposition)
+    out = tmp_path / "run"
+    stored = store_parts(decomposition.parts, out)
+    parts = parts_from_decomposition(
+        decomposition, source_hashes={key: file_hash(path) for key, path in stored.items()}
+    )
     spec = spec_from_parts(
         spec_id="chain",
         parts=parts,
@@ -278,8 +286,6 @@ def test_each_pair_of_a_chain_is_judged_on_its_own(tmp_path):
         # overhang finding about a decision nobody made.
         constraints=FitConstraints(),
     )
-    out = tmp_path / "run"
-    store_parts(decomposition.parts, out)
     design = materialize(spec, out)
 
     cascade = DesignVerifierCascade(registry=default_registry(), root=out)

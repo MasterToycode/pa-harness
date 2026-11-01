@@ -46,6 +46,7 @@ __all__ = [
     "Decomposer",
     "Decomposition",
     "check_store",
+    "file_hash",
     "mesh_hash",
     "parts_from_decomposition",
     "split_slabs",
@@ -96,24 +97,44 @@ class Decomposer(Protocol):
 # --------------------------------------------------------------------------- #
 # Identity and storage
 # --------------------------------------------------------------------------- #
-def mesh_hash(mesh: trimesh.Trimesh) -> str:
-    """A content address for a mesh: its vertices, canonically ordered, plus size.
+def file_hash(path: str | Path) -> str:
+    """The content address of a blank **file** — what `PartSpec.source` records.
 
-    Not the STL bytes, which was the first try and is wrong: writing a mesh and
-    reading it back does *not* always preserve vertex order (a boolean result and a
-    `creation.box` export differently), so the same solid hashed two ways and the
-    blank store looked edited when it was not. Measured 2026-11-02 on the 60x40x12
-    plate: `sha256:2c32…` fresh versus `sha256:a507…` after a store/load cycle.
+    Two rounds of testing said the mesh could not be the identity across a round
+    trip. Triangles survive; the numbers in them do not: STL stores float32, and at
+    120 mm that is a 4e-6 mm wobble, so a canonical hash at 1e-6 disagreed for all 19
+    parts of a real X-Part job while the triangles were geometrically identical.
 
-    The canonical form is order independent: round to 1e-6 mm (a nanometre — far
-    below any fit band), sort the vertices lexicographically, and include the face
-    count and volume so two different solids cannot collide by sharing a vertex set.
+    Hashing the file is exact by construction and states the right thing: the spec
+    names *this artefact*, and `check_store` re-reads the same bytes. A coarser
+    coordinate hash would only make the mismatch rarer, not impossible.
     """
-    vertices = np.round(np.asarray(mesh.vertices, dtype=float), 6)
-    order = np.lexsort((vertices[:, 2], vertices[:, 1], vertices[:, 0]))
     digest = hashlib.sha256()
-    digest.update(vertices[order].tobytes())
-    digest.update(f"|faces={len(mesh.faces)}|volume={round(float(mesh.volume), 6)}".encode())
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    return "sha256:" + digest.hexdigest()[:32]
+
+
+def mesh_hash(mesh: trimesh.Trimesh) -> str:
+    """A content address for a mesh *object*: its triangle soup, canonically ordered.
+
+    Used for comparison and reporting (are these two solids the same), not for
+    `PartSpec.source` — see `file_hash` for why the spec names a file instead.
+    Rounds to 1e-6 mm, orders each triangle's vertices, orders the triangles, and
+    includes the face count. Volume is deliberately absent: it is derived from the
+    same triangles and STL's float32 coordinates move it in the sixth decimal.
+    """
+    triangles = np.round(np.asarray(mesh.triangles, dtype=float), 6)
+    within = np.lexsort(
+        (triangles[:, :, 2], triangles[:, :, 1], triangles[:, :, 0]), axis=1
+    )
+    triangles = np.take_along_axis(triangles, within[:, :, None], axis=1)
+    flat = triangles.reshape(len(triangles), 9)
+    order = np.lexsort(flat.T[::-1])
+    digest = hashlib.sha256()
+    digest.update(flat[order].tobytes())
+    digest.update(f"|faces={len(mesh.faces)}".encode())
     return "sha256:" + digest.hexdigest()[:32]
 
 
@@ -151,7 +172,7 @@ def check_store(spec, out_dir: Path) -> dict[str, Path]:
         if not path.exists():
             problems.append(f"{part.id}: no blank at {path}")
             continue
-        actual = mesh_hash(trimesh.load(path, force="mesh"))
+        actual = file_hash(path)
         if actual != part.source:
             problems.append(
                 f"{part.id}: blank at {path} hashes {actual}, the spec says {part.source}"
@@ -244,7 +265,10 @@ def split_slabs(
 
 
 def parts_from_decomposition(
-    decomposition: Decomposition, *, role: str = "part"
+    decomposition: Decomposition,
+    *,
+    role: str = "part",
+    source_hashes: dict[str, str] | None = None,
 ) -> tuple[PartSpec, ...]:
     """A `PartSpec` per piece: bbox envelope, bbox centre, and the blank's hash.
 
@@ -267,7 +291,7 @@ def parts_from_decomposition(
                 role="body" if index == 0 and role == "part" else role,
                 size_mm=tuple(float(value) for value in size),  # type: ignore[arg-type]
                 pose_mm=tuple(float(value) for value in centre),  # type: ignore[arg-type]
-                source=mesh_hash(part.mesh),
+                source=(source_hashes or {}).get(part.id) or mesh_hash(part.mesh),
             )
         )
     return tuple(specs)

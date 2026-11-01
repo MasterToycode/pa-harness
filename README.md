@@ -67,12 +67,14 @@ pah serve            # http://127.0.0.1:8321
 | 命令 | 用途 |
 |---|---|
 | `pah build "<prompt>"` | 需求 → 设计 → 生成 → 验证 → 返修 → 预览（一条命令） |
+| `pah decompose <mesh>` | 一个整体 → N 个零件 + 自动销孔 + 逐对验证 + 逐件导出（见 [docs/multi-part.md](docs/multi-part.md)） |
 | `pah serve` | 本地网页，输入 prompt 看结果 |
 | `pah preview <run>` | 重新渲染某次运行的 PNG/HTML |
 | `pah run --spec ...` | 在已有 spec 上跑一个 episode（含预算/恢复/注入故障） |
 | `pah design new / sanity` | 写初始 spec；验证器自检 |
 | `pah eval` | 等预算策略对比（rule/random/llm），口径分列 |
 | `pah providers doctor` | 外部服务自检（LLM 端点、生成器适配器） |
+| `pah fbx doctor / to / split` | Blender 无头转换：STL/GLB ⇄ FBX（混元的「组件生成」只收 FBX） |
 | `pah plugins list` | 已加载的能力（连接件/验证器/算子/策略/供应商） |
 
 ## 它是什么 / 不是什么
@@ -93,6 +95,31 @@ pah serve            # http://127.0.0.1:8321
 适配器要做三件事，代码里已实现并写了理由：**闭合**（生成模型给的是开放壳 → 体素重建）、**对齐**（长轴朝 Z）、**归一化**（等比缩放到设计销径 + 裁到设计包络）。接口尺寸永远由 spec 决定，不由模型决定。
 
 生成的零件通常非凸（实测中空销的凸包是实体的 2.4×），MuJoCo 只能碰撞凸包。物理档用 **CoACD 凸分解**（`pip install coacd`）把零件拆成若干凸包再仿真，实测 2k 面 + 12 凸包上限 ≈ 17 s/次；没装 coacd 时如实报 `not evaluated`。
+
+## 多件装配（X-Part 式）
+
+`pah build` 做的是「一件主体 + 一件生成件」。要做「一个整体拆成 N 件、打印后拼起来」，
+用 `pah decompose`：
+
+```bash
+# 免费：本地切分 + 自动销孔 + 逐对验证 + 3MF 导出
+pah decompose part.stl --parts 3 --out runs/multi
+
+# 走腾讯云「组件生成」（X-Part + P3-SAM），会花积分
+pah decompose whole.glb --decomposer xpart --size-mm 120 --out runs/xpart
+```
+
+跑完会得到 `spec.json`（N 件 M 接口）、`geometry/part_*.stl`（每件单独）、
+`print/assembly.3mf`（多对象、mm 单位）、`report.json`（**逐接口**的证书与未评估项）。
+
+三条要点，细节在 [docs/multi-part.md](docs/multi-part.md)：
+
+1. **生成模型只做形状，不做配合**。X-Part 官方说明里部件「只贴合、不固接」；销孔尺寸、
+   间隙、壁厚、插入路径全部由 harness 决定并验证。
+2. **验证不是重写而是复用**：每个接口构造一个「两件影子」，原有 6 个验证器零改动逐对跑。
+3. **说清楚哪句话有证据**：`assemblable/printable` 带 `validated: full|partial`，
+   `not_evaluated` 列出没跑成的检查（分解件上 `insert_material` 与 `physics_settle`
+   的模型不适用，会明说而不是默认通过）。
 
 ## 目录
 

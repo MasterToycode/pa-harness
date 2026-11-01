@@ -119,67 +119,71 @@ def contact_of(
 
     # The separating axis is the one with a non-negative gap; the other two must
     # overlap (negative gap) or the boxes are diagonal neighbours, not side by side.
-    candidates = [
-        (gap, index) for gap, index in gaps if gap >= -1e-9
-    ]
+    candidates = [(gap, index) for gap, index in gaps if gap >= -1e-9]
     touching = [(gap, index) for gap, index in candidates if gap <= tolerance_mm]
+    if not candidates:
+        # Every axis overlaps: the boxes interpenetrate. X-Part's own output does
+        # this — 30 bounding-box pairs of a 19-part decomposition intersected by more
+        # than 1 mm — because each part is generated independently from a bbox prompt
+        # and nothing enforces a partition.
+        #
+        # The interface is the axis of *least* penetration: that is the direction in
+        # which the two pieces are most nearly side by side. The negative gap is
+        # carried through rather than clamped, so the interference verifier sees the
+        # real number and reports `geometric_interference` — which is the true answer
+        # for pieces that occupy the same space. Refusing to pair them would hide a
+        # blocking defect behind "no adjacency".
+        gap, axis_index = max(gaps)  # least negative = shallowest overlap
+        for other_gap, other_index in gaps:
+            if other_index != axis_index and other_gap >= -1e-9:
+                return None
+        direction = 1.0 if _centre(second)[axis_index] >= _centre(first)[axis_index] else -1.0
+        return _contact(first, second, axis_index, direction, gap)
     if len(touching) != 1:
         return None
     gap, axis_index = touching[0]
     for other_gap, other_index in gaps:
         if other_index != axis_index and other_gap > -1e-6:
             return None  # diagonal: they meet at an edge or corner, not a face
-
     direction = 1.0 if _centre(second)[axis_index] >= _centre(first)[axis_index] else -1.0
-    axis = tuple(1.0 if index == axis_index and direction > 0 else
-                 (-1.0 if index == axis_index else 0.0) for index in range(3))
+    return _contact(first, second, axis_index, direction, gap)
 
-    # Centre of the shared face: the plane halfway across the gap, centred on the
-    # mutual overlap of the other two axes.
+
+def _contact(
+    first: PartSpec, second: PartSpec, axis_index: int, direction: float, gap: float
+) -> PartContact:
+    """The `PartContact` for a pair already established as adjacent on `axis_index`."""
+    axis = tuple(
+        1.0 if index == axis_index and direction > 0 else (-1.0 if index == axis_index else 0.0)
+        for index in range(3)
+    )
     point = [0.0, 0.0, 0.0]
+    overlaps: dict[int, float] = {}
     for index in range(3):
+        low = max(
+            _centre(first)[index] - _extent(first, index) / 2.0,
+            _centre(second)[index] - _extent(second, index) / 2.0,
+        )
+        high = min(
+            _centre(first)[index] + _extent(first, index) / 2.0,
+            _centre(second)[index] + _extent(second, index) / 2.0,
+        )
+        overlaps[index] = high - low
         if index == axis_index:
             face_first = _centre(first)[index] + direction * _extent(first, index) / 2.0
             face_second = _centre(second)[index] - direction * _extent(second, index) / 2.0
             point[index] = (face_first + face_second) / 2.0
         else:
-            low = max(
-                _centre(first)[index] - _extent(first, index) / 2.0,
-                _centre(second)[index] - _extent(second, index) / 2.0,
-            )
-            high = min(
-                _centre(first)[index] + _extent(first, index) / 2.0,
-                _centre(second)[index] + _extent(second, index) / 2.0,
-            )
             point[index] = (low + high) / 2.0
 
     others = [index for index in range(3) if index != axis_index]
-    low = max(
-        _centre(first)[others[0]] - _extent(first, others[0]) / 2.0,
-        _centre(second)[others[0]] - _extent(second, others[0]) / 2.0,
-    )
-    high = min(
-        _centre(first)[others[0]] + _extent(first, others[0]) / 2.0,
-        _centre(second)[others[0]] + _extent(second, others[0]) / 2.0,
-    )
-    overlap_a = high - low
-    low = max(
-        _centre(first)[others[1]] - _extent(first, others[1]) / 2.0,
-        _centre(second)[others[1]] - _extent(second, others[1]) / 2.0,
-    )
-    high = min(
-        _centre(first)[others[1]] + _extent(first, others[1]) / 2.0,
-        _centre(second)[others[1]] + _extent(second, others[1]) / 2.0,
-    )
-    overlap_b = high - low
-
     return PartContact(
         a=first.id,
         b=second.id,
         axis=axis,  # type: ignore[arg-type]
         point_mm=tuple(point),  # type: ignore[arg-type]
         gap_mm=float(gap),
-        overlap_mm=(float(overlap_a), float(overlap_b)),
+        overlap_mm=(float(overlaps[others[0]]), float(overlaps[others[1]])),
         thickness_mm=(float(_extent(first, axis_index)), float(_extent(second, axis_index))),
     )
 
@@ -216,6 +220,20 @@ def _peg_for(contact: PartContact, clearance_mm: float) -> tuple[float, float]:
     """
     face_budget = _FACE_FRACTION * min(contact.overlap_mm)
     depth_budget = _THICKNESS_FRACTION * contact.thinnest_mm
+    if contact.gap_mm < 0.0:
+        # The pieces already occupy the same space: the joint is blocked before any
+        # peg exists, and the interference verifier is what will say so. Keep the
+        # feature small anyway — a peg sized off an interpenetrating face can be wide
+        # enough to cut the part in two, and a machining error would bury the real
+        # finding (the overlap) under a `MachiningError`.
+        diameter = min(face_budget, 0.5 * contact.thinnest_mm, 6.0)
+        engage = min(0.4 * contact.thinnest_mm, 4.0)
+        if diameter < _MIN_PEG_MM:
+            raise ValueError(
+                f"thickness {contact.thinnest_mm:.1f} mm leaves no peg for an "
+                f"interpenetrating pair (overlap {-contact.gap_mm:.1f} mm)"
+            )
+        return float(diameter), float(engage)
     diameter = min(face_budget, depth_budget, _MAX_PEG_MM)
     if diameter < _MIN_PEG_MM:
         raise ValueError(
@@ -235,6 +253,7 @@ def propose_interfaces(
     *,
     tolerance_mm: float = 0.5,
     clearance_mm: float = 0.20,
+    limit: int | None = None,
 ) -> PairingReport:
     """One `peg_hole` per adjacent pair, oriented `a` = host (socket), `b` = insert.
 
@@ -243,10 +262,17 @@ def propose_interfaces(
     decomposition happened to name first. A chain therefore lands the way a person
     would draw it: every middle piece carries a peg on one face and a socket on the
     other.
+
+    `limit` caps how many pairs become joints, keeping the widest faces first. It
+    exists because a 19-part decomposition proposes 30 contacts, and every contact
+    costs a socket cut, a peg union and a full verifier sweep on meshes that can be
+    300k faces each — minutes per joint. A cap that is *stated* (the skipped pairs
+    keep their reason) is honest; a pipeline that quietly took an hour is not.
     """
     interfaces: list[InterfaceSpec] = []
     skipped: list[tuple[str, str, str]] = []
     ordered = sorted(parts, key=lambda part: part.id)
+    accepted = 0
 
     for index, first in enumerate(ordered):
         for second in ordered[index + 1 :]:
@@ -257,6 +283,16 @@ def propose_interfaces(
                 diameter, engage = _peg_for(contact, clearance_mm)
             except ValueError as error:
                 skipped.append((first.id, second.id, str(error)))
+                continue
+            if limit is not None and accepted >= limit:
+                skipped.append(
+                    (
+                        first.id,
+                        second.id,
+                        f"beyond the interface limit of {limit}; the pair is adjacent "
+                        "but was not turned into a joint",
+                    )
+                )
                 continue
             # `contact.axis` points from `first` to `second`, so `first` is the part
             # on the negative side: the host, whose face gets the socket.
@@ -275,6 +311,7 @@ def propose_interfaces(
                     },
                 )
             )
+            accepted += 1
     return PairingReport(interfaces=tuple(interfaces), skipped=tuple(skipped))
 
 
