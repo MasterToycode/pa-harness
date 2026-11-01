@@ -65,9 +65,18 @@ SECRET_KEY_ENV = "TENCENTCLOUD_SECRET_KEY"
 REGION_ENV = "TENCENTCLOUD_REGION"
 DEFAULT_REGION = "ap-guangzhou"
 
-#: 提交/查询用的动作名。专业版是 `...ProJob`，极速版是无后缀；默认走极速版（更便宜、几秒级）。
-SUBMIT_ACTION = "SubmitHunyuanTo3DJob"
-QUERY_ACTION = "QueryHunyuanTo3DJob"
+#: 提交/查询用的动作名。腾讯云按档位拆了三组动作，**模型版本再通过请求里的
+#: `Model` 参数选**（`HY-3D-2.5` / `HY-3D-3.0` / `HY-3D-3.1` / `HY-3D-Express`，
+#: 以控制台开通后接口返回的取值为准）。所以「接的是不是 2.5」由这两层共同决定：
+#: 档位选 action，版本选 Model。
+TIERS: dict[str, tuple[str, str]] = {
+    "standard": ("SubmitHunyuanTo3DJob", "QueryHunyuanTo3DJob"),
+    "rapid": ("SubmitHunyuanTo3DRapidJob", "QueryHunyuanTo3DRapidJob"),
+    "pro": ("SubmitHunyuanTo3DProJob", "QueryHunyuanTo3DProJob"),
+}
+DEFAULT_TIER = "standard"
+TIER_ENV = "HUNYUAN3D_TIER"
+MODEL_ENV = "HUNYUAN3D_MODEL"
 API_VERSION = "2025-05-13"
 
 #: 轮询上限：极速版通常 10-60 s；专业版可能几分钟。超过就报错，不无限等。
@@ -188,20 +197,56 @@ def _prompt_for(spec: DesignSpec) -> str:
     )
 
 
+def _tier() -> str:
+    """Which action pair to call. `pro` is highest precision, `rapid` fastest."""
+    tier = os.environ.get(TIER_ENV, "").strip() or DEFAULT_TIER
+    if tier not in TIERS:
+        raise RuntimeError(
+            f"{TIER_ENV}={tier!r} is not one of {sorted(TIERS)}; "
+            "standard|rapid|pro select different action pairs on the same service"
+        )
+    return tier
+
+
+def _model() -> str:
+    """The model version, if pinned. Empty means "let the service pick its default".
+
+    This is the answer to "which model am I integrating": Hunyuan3D's API chooses the
+    *version* through this parameter (`HY-3D-2.5`, `HY-3D-3.0`, `HY-3D-3.1`, ...)
+    while the *tier* chooses the action pair. Leaving it empty means a report cannot
+    claim which version produced a part, so a run that matters should pin it.
+    """
+    return os.environ.get(MODEL_ENV, "").strip()
+
+
+def _submit_payload(prompt: str, *, model: str = "", image_url: str | None = None) -> dict:
+    """The submit body, kept pure so a test can assert what we would send.
+
+    `Model` is only included when pinned: sending an empty string would ask the
+    service to look up a model called "", which is a different request than "default".
+    """
+    payload: dict[str, object] = {"ResultFormat": "GLB"}
+    if image_url:
+        payload["ImageUrl"] = image_url
+    else:
+        payload["Prompt"] = prompt
+    if model:
+        payload["Model"] = model
+    return payload
+
+
 def _generate(prompt: str, *, image_url: str | None = None) -> trimesh.Trimesh:
     """Submit → poll → download → mesh. Every failure is a sentence, not a stack."""
     client = _client()
-    request: dict[str, object] = {"Prompt": prompt, "ResultFormat": "GLB"}
-    if image_url:
-        request = {"ImageUrl": image_url, "ResultFormat": "GLB"}
-    job = _call(client, SUBMIT_ACTION, request)
+    submit_action, query_action = TIERS[_tier()]
+    job = _call(client, submit_action, _submit_payload(prompt, model=_model(), image_url=image_url))
     job_id = str(job.get("JobId") or job.get("JobID") or "")
     if not job_id:
         raise RuntimeError(f"hunyuan3d submit returned no JobId: {json.dumps(job)[:400]}")
 
     deadline = time.monotonic() + POLL_TIMEOUT_S
     while time.monotonic() < deadline:
-        result = _call(client, QUERY_ACTION, {"JobId": job_id})
+        result = _call(client, query_action, {"JobId": job_id})
         status = str(result.get("Status") or result.get("StatusString") or "").upper()
         if status in ("DONE", "SUCCESS", "SUCCEEDED", "COMPLETED"):
             url = _first_file_url(result)
@@ -345,9 +390,18 @@ def _check() -> int:
         sdk = "MISSING: pip install tencentcloud-sdk-python"
         problems.append(sdk)
     region = os.environ.get(REGION_ENV) or DEFAULT_REGION
+    try:
+        tier = _tier()
+        submit_action, query_action = TIERS[tier]
+    except RuntimeError as error:
+        problems.append(str(error))
+        tier, submit_action, query_action = "?", "?", "?"
+    model = _model() or "<service default>"
     print(f"endpoint   ai3d.tencentcloudapi.com  version={API_VERSION}  region={region}")
     print(f"sdk        {sdk}")
-    print(f"actions    {SUBMIT_ACTION} -> {QUERY_ACTION}")
+    print(f"tier       {tier}   (HUNYUAN3D_TIER=standard|rapid|pro)")
+    print(f"model      {model}   (HUNYUAN3D_MODEL, e.g. HY-3D-2.5 / HY-3D-3.1)")
+    print(f"actions    {submit_action} -> {query_action}")
     for problem in problems:
         print(f"FAIL       {problem}")
     print(f"\n{len(problems)} problem(s). --check never calls the service (no cost).")

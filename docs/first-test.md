@@ -197,6 +197,24 @@ pah providers doctor --role gen --call                   # 真生成一次（会
 pah run --spec fixtures\design\demo-peg-hole-interfere.json --policy rule --rounds 3 --out runs/hunyuan
 ```
 
+**3.5）「接的是不是 2.5」——两层选择，别混**
+
+| 层 | 选什么 | 怎么设 | 取值 |
+|---|---|---|---|
+| 档位 | 调哪组 action | `.env` 的 `HUNYUAN3D_TIER` | `standard`（默认）/ `rapid`（极速）/ `pro`（最高精度、PBR、多视角） |
+| 版本 | 请求里的 `Model` 参数 | `.env` 的 `HUNYUAN3D_MODEL` | `HY-3D-2.5` / `HY-3D-3.0` / `HY-3D-3.1` 等，**以你开通后接口返回的取值为准** |
+
+不设 `HUNYUAN3D_MODEL` = 用服务默认版本——那篇报告就不能声称「用的是 2.5」。
+要锁定就在 `.env` 里写：
+
+```ini
+HUNYUAN3D_MODEL=HY-3D-2.5
+HUNYUAN3D_TIER=pro
+```
+
+`python examples\hunyuan3d_materializer.py --check` 会把 tier / model / action 三行打出来，
+一眼确认你接的到底是哪一层。
+
 `--check` 在没填 key 时会明确报 `TENCENTCLOUD_SECRET_ID is not set`，填完变 0 problem。
 
 **4）`pah.toml` 指过去**：

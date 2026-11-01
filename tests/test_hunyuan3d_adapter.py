@@ -16,14 +16,19 @@ import trimesh
 
 from examples.hunyuan3d_materializer import (
     API_VERSION,
-    QUERY_ACTION,
+    DEFAULT_TIER,
+    MODEL_ENV,
     SECRET_ID_ENV,
     SECRET_KEY_ENV,
-    SUBMIT_ACTION,
+    TIER_ENV,
+    TIERS,
     _first_file_url,
     _fit_to_interface,
+    _model,
     _prompt_for,
+    _submit_payload,
     _suffix_of,
+    _tier,
     materialize,
 )
 
@@ -149,5 +154,44 @@ def test_the_adapter_pins_the_documented_endpoint_and_version():
     """The service is versioned; an adapter that forgets which version it speaks is
     the kind of drift that silently changes what a report means."""
     assert API_VERSION == "2025-05-13"
-    assert SUBMIT_ACTION == "SubmitHunyuanTo3DJob"
-    assert QUERY_ACTION == "QueryHunyuanTo3DJob"
+    assert TIERS["standard"] == ("SubmitHunyuanTo3DJob", "QueryHunyuanTo3DJob")
+    assert TIERS["rapid"] == ("SubmitHunyuanTo3DRapidJob", "QueryHunyuanTo3DRapidJob")
+    assert TIERS["pro"] == ("SubmitHunyuanTo3DProJob", "QueryHunyuanTo3DProJob")
+    assert DEFAULT_TIER == "standard"
+
+
+# --------------------------------------------------------------------------- #
+# "which model am I integrating": tier picks the action pair, Model picks the version
+# --------------------------------------------------------------------------- #
+def test_the_tier_selects_the_action_pair(monkeypatch):
+    monkeypatch.delenv(TIER_ENV, raising=False)
+    assert _tier() == "standard"
+
+    monkeypatch.setenv(TIER_ENV, "pro")
+    assert _tier() == "pro"
+
+    monkeypatch.setenv(TIER_ENV, "ultra")
+    with pytest.raises(RuntimeError, match="not one of"):
+        _tier()
+
+
+def test_the_model_version_is_optional_and_only_sent_when_pinned(monkeypatch):
+    """Sent empty, it would ask the service to look up a model named "" — a different
+    request than "let the service choose"."""
+    monkeypatch.delenv(MODEL_ENV, raising=False)
+    assert _model() == ""
+    assert "Model" not in _submit_payload("a pin")
+
+    monkeypatch.setenv(MODEL_ENV, "HY-3D-2.5")
+    payload = _submit_payload("a pin", model=_model())
+    assert payload["Model"] == "HY-3D-2.5"
+
+
+def test_the_payload_never_carries_both_a_prompt_and_an_image():
+    """The service rejects that combination; failing here beats failing at the API."""
+    text = _submit_payload("a pin")
+    image = _submit_payload("ignored", image_url="https://x/a.png")
+
+    assert "Prompt" in text and "ImageUrl" not in text
+    assert "ImageUrl" in image and "Prompt" not in image
+    assert text["ResultFormat"] == "GLB"
