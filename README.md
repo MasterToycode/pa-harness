@@ -1,75 +1,131 @@
 # PAH — Physics-Aware Harness
 
-给 3D 可装配部件做的**agentic 修复闭环**：设计意图 → 几何物化 → 物理/几何证据 → 决策 → 动作 → 再验证。有状态、可复现、可扩展。
+给 3D 可装配部件做的 **agentic harness**：一句话需求 → 设计意图 → 生成几何 → 六类验证 → 自动返修 → 出图。
 
-**先读这三份**：[docs/architecture.md](docs/architecture.md)（系统怎么搭）· [docs/contracts/v2-interfaces.md](docs/contracts/v2-interfaces.md)（接口与分工）· [docs/pah-dev-doc-v1.md](docs/pah-dev-doc-v1.md)（三支柱与 RQ）
+```powershell
+pah build "a pin with a flat round head that seats into a blind socket" --kind peg_hole
+pah serve          # 或者打开网页，在输入框里写 prompt
+```
+
+![生成结果预览](docs/images/part-preview.png)
+
+## 三分钟上手
+
+```powershell
+cd D:\yanyi\pa-harness
+pip install -e .                       # 一次
+
+# 1) 配 key（只写一次，pah 启动自动读）
+copy .env.example .env                 # 填 DEEPSEEK_API_KEY / TENCENTCLOUD_SECRET_ID+KEY
+
+# 2) 检查外部服务（不花钱）
+pah providers doctor
+pah providers doctor --role llm --call # 花一次极小调用，证明模型能应答
+
+# 3) 生成 + 看
+pah build "a pin with a flat round head that seats into a blind socket" --kind peg_hole --rounds 1
+pah preview runs/build-<时间戳>        # 只重新出图
+```
+
+产物都在 `runs/<你的目录>/`：
+
+| 文件 | 是什么 |
+|---|---|
+| `preview.png` | 四视图渲染（等距/前/侧/顶），直接打开看 |
+| `preview.html` | 单文件 3D 浏览器，双击即可旋转缩放（STL 已内嵌，离线可用） |
+| `geometry/body.stl`、`geometry/insert.stl` | **你的零件**，可直接进切片软件 |
+| `report.json` | 判定、每轮动作、成本、验证器说明（未评估项单列） |
+| `trace.jsonl` | 逐事件轨迹（可复现、可恢复） |
+| `spec.json` | 这次用的设计意图（改它再跑一次即可） |
+
+## 两种用法
+
+**命令行**（适合脚本、批处理、复现实验）
+
+```powershell
+pah build "<prompt>" --kind peg_hole|snap_fit|dovetail --rounds 1 --policy rule|random|llm
+pah run   --spec runs/x/spec.json --policy llm --rounds 3     # 已有 spec 上跑闭环
+pah eval  --suite fixtures/design/stress --policies rule,random --rounds 3
+```
+
+**网页**（适合试 prompt、给人演示）
+
+```powershell
+pah serve            # http://127.0.0.1:8321
+```
+
+![输入界面](docs/images/serve-page.png)
+
+左边写一句话、选连接件、选轮数，点「开始生成」；右边实时显示日志、四视图预览、STL 与报告链接。
+同一时间只跑一个任务；刷新页面还能看到上一次的结果。
+
+## 命令表
+
+| 命令 | 用途 |
+|---|---|
+| `pah build "<prompt>"` | 需求 → 设计 → 生成 → 验证 → 返修 → 预览（一条命令） |
+| `pah serve` | 本地网页，输入 prompt 看结果 |
+| `pah preview <run>` | 重新渲染某次运行的 PNG/HTML |
+| `pah run --spec ...` | 在已有 spec 上跑一个 episode（含预算/恢复/注入故障） |
+| `pah design new / sanity` | 写初始 spec；验证器自检 |
+| `pah eval` | 等预算策略对比（rule/random/llm），口径分列 |
+| `pah providers doctor` | 外部服务自检（LLM 端点、生成器适配器） |
+| `pah plugins list` | 已加载的能力（连接件/验证器/算子/策略/供应商） |
 
 ## 它是什么 / 不是什么
 
 | 是 | 不是 |
 |---|---|
-| 决策—工具—验证的闭环内核（Ticket / Mandate / Round / Budget / Trace） | 新的 3D 生成模型 |
-| 让预训练 Agent 在**可信证据**与**硬约束**下改设计 | CAD 前端 |
-| 可换成 DiT/CAD 的生成层**端口** | RL 训练框架 |
+| 决策—工具—验证的闭环（Ticket / Mandate / Round / Budget / Trace） | 新的 3D 生成模型 |
+| 预训练 Agent 在可信证据与硬约束下改设计 | CAD 前端 |
+| 可换生成后端（混元生 3D、本地 CAD、未来的 DiT） | RL 训练框架 |
 | 等预算可比、可复现的评测底座 | 某个数据集的连接件算法 |
 
-核心不变量：**证据先于修复**（只有通过自检的验证器能写观测）、**预算是第一类对象**（含验证开销）、**内核零 I/O 且状态由事实派生**、**副作用先落库后执行**。
+不变量：**证据先于修复**（只有通过自检的验证器能写观测）、**预算是第一类对象**（验证开销也记账）、**内核零 I/O 且状态由事实派生**、**未知不等于通过**。
 
-## 快速开始
+## 生成后端
 
-```bash
-pip install -e .                      # pah 命令
-python -m pytest -q                   # 637 tests
+默认是参数化几何（无需外部服务）。接混元生 3D 见 [docs/first-test.md](docs/first-test.md) §2.5：`.env` 填 SecretId/SecretKey，`pah.toml` 把 `[gen]` 指到 `examples/hunyuan3d_materializer.py`。
 
-pah providers doctor                  # 外部服务自检：配置 / 凭据 / 生成器目标（不花钱）
-pah providers doctor --call           # 各打一次真实调用（LLM 一次 completion / 生成器物化一次）
-
-pah design sanity                     # 5 个设计平面验证器自检（known_good/known_bad）
-pah design new --kind peg_hole --out runs/demo
-
-# 演示：插销 10.2 / 孔径 10.0 → 干涉 → 一轮修好
-pah run --spec fixtures/design/demo-peg-hole-interfere.json --policy rule --rounds 3 --out runs/demo-rule
-pah run --spec fixtures/design/demo-peg-hole-interfere.json --policy llm  --rounds 3 --out runs/demo-llm   # 需 DEEPSEEK_API_KEY
-
-pah eval --suite fixtures/design/stress --policies rule,random --rounds 3 --out runs/eval-stress
-python scripts/acceptance.py          # 六条 P0 验收判据（一条命令）
-```
-
-## 现在的实测状态（2026-11-01）
-
-| 项 | 数字 |
-|---|---|
-| 契约案例 `peg 10.2 / hole 10.0` | rule **1 轮修复**（`set_clearance 0.35`），4 个失败码全清；LLM 策略同样 1 轮（真实调用，4254 tokens） |
-| 等预算对比（4 个故意做坏的设计） | rule **4/4**、均值 1.00 轮 / 11 次几何调用；random **2/4**、2.25 轮 / 18.5 次 |
-| P0 六条判据 | `scripts/acceptance.py` **6/6**（含中断恢复 hash 逐项相同、预算恰停、注入故障不崩） |
-| 验证器 | 5 个（间隙 / 干涉 / 插入路径 / 可打印性 / MuJoCo 沉降），均有 known_good+known_bad 自检 |
-| 测试 | **637 passed** |
-
-口径纪律：`repaired_by_policy`、`environment_errors`、`not_evaluated`（能力边界，如未声明打印朝向、非凸件不评物理）三列**永不合并**；`not_evaluated` 不等于通过。
+适配器要做三件事，代码里已实现并写了理由：**闭合**（生成模型给的是开放壳 → 体素重建）、**对齐**（长轴朝 Z）、**归一化**（等比缩放到设计销径 + 裁到设计包络）。接口尺寸永远由 spec 决定，不由模型决定。
 
 ## 目录
 
 ```text
 src/pah/
 ├── core/       # 实体、不变量、唯一写者（零 I/O）
-├── app/        # store / effects / trace / providers / runtime（组合根）
+├── app/        # store / effects / trace / providers / runtime / env
 ├── design/     # DesignSpec + 三种连接件几何 + 物化 + 冻结契约 api.py
-├── policy/     # 循环驱动器、算子表、rule / random / llm / case_memory
-├── tools/      # 验证器（含 MuJoCo 沉降）、IVR、几何适配
+├── policy/     # 循环驱动器、7 个算子、rule / random / llm / case_memory
+├── tools/      # 验证器（间隙/干涉/路径/可打印/物理）、IVR、几何适配
 ├── eval/       # 等预算 runner + 分列报表
 ├── plugins.py  # 插件加载器（builtin / pah.toml / entry point）
-└── cli/        # run / design / eval / plugins / probe
+└── cli/        # build / serve / preview / run / design / eval / providers / plugins
 ```
-扩展一个新模块（DiT 适配器、新连接件、新验证器、新策略）不需要改 `core/`，见 [docs/plugin-api.md](docs/plugin-api.md)。
 
-## 只读 / 冻结
+## 已实测（2026-11-01）
 
-- 数据集平面：`tools/verifiers/connector_feasible.py`、`policy/repair_script.py`、`policy/dcap.py`、`tools/eps.py`、`tools/ivr.py`、`runs/m0-connector/`、`runs/m1-min/` —— 它们是「适配器忠实」的证据（705 边逐边 0 差异、393 成功），不再投入。
-- 外部数据目录（`D:\yanyi\rl_assembly\data\`）只读；新产物一律写 `runs/<id>/`。
+| 项 | 结果 |
+|---|---|
+| 契约案例 peg 10.2 / hole 10.0 | rule **1 轮修复**；LLM 策略同样 1 轮（真实调用 4258 tokens） |
+| 等预算对比（4 个故意做坏的设计） | rule **4/4**、1.00 轮；random **2/4**、2.25 轮 |
+| P0 六条判据 | `python scripts/acceptance.py` **6/6** |
+| 混元 3D 真生成 | Ø9.70 mm 销、水密 64k 面、裁到 14 mm 包络、就位误差 0 |
+| 测试 | **670 passed** |
+
+口径纪律：`repaired_by_policy`、`environment_errors`、`not_evaluated`（能力边界）三列**永不合并**；`not_evaluated` 不等于通过。
 
 ## 下一步（未做，不是遗漏）
 
-1. **评测集扩充**：正式结论要独立测试集（100 个 dev 集只够做探针；n=20 时 Wilson CI ≈ ±20 点）。
-2. **LLM 策略的提示词工程**：目前只跑过 1 个真实调用 + ReplayLLM 录制。
-3. **DiT 适配器**：`Generator` 端口已留；接入前必须先用 1 个样本验证模型能吃什么条件（见 doc §11 风险表）。
-4. **case memory 落账**：`policy.flush(ticket.rounds)` 一行未接（Pass 轮不进记忆账），跨案例检索未做排序实验。
+1. 生成件形态验收：当前验证器判接口参数与碰撞，**不判「销里有没有材料」**（混元给的销是中空壳，体积 163 vs 设计 1033）。计划加 `insert_material` 验证器。
+2. 评测集扩充：现在是 dev 集，正式结论要独立测试集。
+3. DiT/CAD 适配器：`Materializer` 端口已留，混元是第一个可用实例。
+4. case memory 落账：`policy.flush(ticket.rounds)` 未接，pass 轮不进记忆。
+
+## 开发
+
+```bash
+python -m pytest -q                  # 全库
+python scripts/acceptance.py         # 六条验收判据
+python scripts/smoke_design.py       # 物化/水密/确定性粗筛
+```

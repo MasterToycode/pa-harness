@@ -88,13 +88,19 @@ def _parser() -> argparse.ArgumentParser:
     # v2 groups. Imported here, not at module import time, so `pah --help` and the
     # two M0 commands do not pay for the geometry stack (the modules keep their own
     # heavy imports inside their handlers for the same reason).
+    from pah.cli import build as build_cli  # noqa: PLC0415
     from pah.cli import design as design_cli  # noqa: PLC0415
     from pah.cli import eval as eval_cli  # noqa: PLC0415
     from pah.cli import plugins as plugins_cli  # noqa: PLC0415
+    from pah.cli import preview as preview_cli  # noqa: PLC0415
     from pah.cli import providers as providers_cli  # noqa: PLC0415
     from pah.cli import run as run_cli  # noqa: PLC0415
+    from pah.cli import serve as serve_cli  # noqa: PLC0415
 
+    build_cli.add_parser(groups)
     run_cli.add_parser(groups)
+    preview_cli.add_parser(groups)
+    serve_cli.add_parser(groups)
     design_cli.add_parser(groups)
     eval_cli.add_parser(groups)
     plugins_cli.add_parser(groups)
