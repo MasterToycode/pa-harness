@@ -27,6 +27,20 @@ Units
 `global_scale` multiplies on the way out. PAH designs in millimetres; the API
 auto-normalises the scale it receives, but a manifest that says what was sent is
 the only way to explain a result that comes back sized differently.
+
+Frames — the trap worth knowing before it bites
+-----------------------------------------------
+STL and OBJ are Z-up and round-trip through this module with their axes intact.
+**glTF is Y-up**, so a `.glb` source arrives in Blender's Z-up frame under the
+standard conversion `(x, y, z) -> (x, -z, y)`. Measured on the 500k-face XPart
+sample (arXiv 2509.08643's own demo asset): glTF extents `(1.05, 1.04, 0.25)`
+become `(1.05, 0.25, 1.04)` after `to_fbx`, and stay there.
+
+That is correct, not lossy, but it means **the frame you submit is the frame the
+job answers in**: bboxes and face ids that come back describe the FBX you sent, so
+they must be joined to the parts in that frame, not re-projected to the original
+GLB's. `tests/test_fbx_bridge.py` pins the conversion so a future Blender upgrade
+cannot change it silently.
 """
 
 from __future__ import annotations

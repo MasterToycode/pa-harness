@@ -72,9 +72,29 @@ def _import_any(path: Path) -> list:
     return created
 
 
+def _bake_world(obj) -> None:
+    """Fold the object's world matrix into its mesh data.
+
+    Not cosmetic: some importers (glTF among them) express their conversion as a
+    transform on a parent object and leave the mesh local, and the STL exporter
+    writes *local* coordinates. Without baking, an object that looks right in the
+    scene exports shifted or rotated. After it, every object's mesh data is world
+    space, so whichever exporter runs next cannot disagree with the scene.
+    """
+    import numpy as np
+
+    matrix = np.array(obj.matrix_world, dtype=float)
+    if np.allclose(matrix, np.eye(4)):
+        return
+    obj.data.transform(matrix)
+    obj.matrix_world.identity()
+
+
 def _export_fbx(out: Path, global_scale: float) -> None:
     import bpy
 
+    for obj in _mesh_objects():
+        _bake_world(obj)
     out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.fbx(
         filepath=str(out),
@@ -96,6 +116,7 @@ def _export_fbx(out: Path, global_scale: float) -> None:
 def _export_stl(obj, out: Path, global_scale: float) -> None:
     import bpy
 
+    _bake_world(obj)
     out.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.object.select_all(action="DESELECT")
     obj.select_set(True)

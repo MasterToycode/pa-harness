@@ -151,6 +151,61 @@ def test_the_bridge_reports_failure_instead_of_writing_a_bad_file(tmp_path):
     assert not (tmp_path / "out.fbx").exists()
 
 
+@needs_blender
+def test_a_gltf_source_arrives_in_the_z_up_frame(tmp_path):
+    """glTF is Y-up; the bridge hands it over as Blender's Z-up, (x, y, z) -> (x, -z, y).
+
+    Pinning this is not fussiness. The part API answers in the frame it was sent,
+    and 混元-generated assets are GLBs, so a silent change here would put every
+    returned bbox in a different frame than the parts it describes. A box whose
+    glTF extents are 10x20x30 must arrive as 10x30x20 — and be *told* so.
+    """
+    import trimesh
+
+    glb = tmp_path / "box.glb"
+    box = trimesh.creation.box(extents=(10.0, 20.0, 30.0))
+    box.export(glb)
+    assert trimesh.load(glb, force="mesh").extents == pytest.approx([10.0, 20.0, 30.0])
+
+    fb = tmp_path / "box.fbx"
+    assert to_fbx([glb], fb) == ["box"]
+    parts = from_fbx(fb, tmp_path / "parts")
+    arrived = trimesh.load(parts["box"], force="mesh")
+
+    assert arrived.extents == pytest.approx([10.0, 30.0, 20.0], rel=FBX_TOL)
+    assert arrived.volume == pytest.approx(box.volume, rel=FBX_TOL)
+
+
 def test_describe_is_json_serialisable():
     """`pah plugins`/a doctor row prints this; keep it plain data."""
     assert json.loads(json.dumps(describe()))
+
+
+# --------------------------------------------------------------------------- #
+# The CLI surface — the setup question must be answerable without Python
+# --------------------------------------------------------------------------- #
+def test_pah_fbx_doctor_exits_on_the_same_answer(capsys):
+    from pah.cli.main import main
+
+    code = main(["fbx", "doctor"])
+    printed = capsys.readouterr().out
+
+    assert code == (0 if _BLENDER is not None else 1)
+    assert "Blender" in printed
+    if _BLENDER is None:
+        assert "MISSING" in printed
+
+
+@needs_blender
+def test_pah_fbx_round_trips_through_the_command_line(tmp_path, capsys):
+    from pah.cli.main import main
+
+    fb = tmp_path / "cli.fbx"
+    assert main(["fbx", "to", str(fb), str(_repo(BODY)), str(_repo(INSERT))]) == 0
+    assert "objects: body, insert" in capsys.readouterr().out
+
+    assert main(["fbx", "split", str(tmp_path / "parts"), str(fb)]) == 0
+    assert sorted(p.name for p in (tmp_path / "parts").glob("*.stl")) == [
+        "body.stl",
+        "insert.stl",
+    ]
