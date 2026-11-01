@@ -20,12 +20,25 @@
 
 ## 1. 接入 LLM API（5 分钟）
 
-### 1.1 放 key（只进环境变量，永不进文件）
+### 1.1 放 key（写一次 `.env`，不用每个 shell 导出）
 
 ```powershell
-$env:DEEPSEEK_API_KEY = "sk-..."     # 当前 shell 有效
-# 或永久：setx DEEPSEEK_API_KEY "sk-..."
+cd D:\yanyi\pa-harness
+copy .env.example .env        # 若还没有 .env
+notepad .env                  # 填一行：DEEPSEEK_API_KEY=sk-...
 ```
+
+`.env` 已被 `.gitignore` 忽略；`pah` 每次启动会读当前目录的 `.env`，并把**变量名**打到 stderr
+（不打印值），例如 `pah: loaded 1 variable(s) from .env: DEEPSEEK_API_KEY`。
+
+优先级：**已经存在的环境变量赢**。所以临时覆盖仍然有效：
+
+```powershell
+$env:DEEPSEEK_API_KEY = "sk-..."     # 只对当前 shell 生效，覆盖 .env
+```
+
+也可以用 `$PAH_ENV_FILE` 指向别的文件（CI / 共享 checkout）。
+**不要**把 key 写进 `pah.toml`——那里只认变量名，写值不生效。
 
 ### 1.2 写 `pah.toml`（已在 `.gitignore` 里，不会被提交）
 

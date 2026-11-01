@@ -13,3 +13,6 @@ runs/**/*.stl
 # Local, never committed: keys live in the environment, paths in pah.toml.
 pah.toml
 .DS_Store
+
+# Local credentials for pah itself (see .env.example). Never committed.
+.env

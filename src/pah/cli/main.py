@@ -20,6 +20,7 @@ import json
 import sys
 import traceback
 
+from pah.app.env import load_env_file
 from pah.tools.verifiers import default_registry
 
 EXIT_OK = 0
@@ -30,6 +31,14 @@ EXIT_CRASH = 3
 
 def main(argv: list[str] | None = None) -> int:
     """Parses `argv` (default `sys.argv[1:]`) and dispatches; returns the exit code."""
+    # A repo-local `.env` fills in missing credentials before any handler looks for
+    # them, so a key is pasted once instead of exported in every shell. Values never
+    # reach stdout (JSON consumers) and never get printed: only the names do, on
+    # stderr, because "did my key load?" should not require reading source.
+    loaded = load_env_file()
+    if loaded:
+        names = ", ".join(sorted(loaded))
+        print(f"pah: loaded {len(loaded)} variable(s) from .env: {names}", file=sys.stderr)
     parser = _parser()
     args = parser.parse_args(argv)
     try:
