@@ -1,0 +1,132 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\first-dit",
+    "policy": "rule",
+    "rounds_requested": 2,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 0.16,
+    "generator": "dit:python"
+  },
+  "ticket": {
+    "id": "30302d2f8ec7dd802996835a4d7449d7",
+    "outcome": "repaired",
+    "reason": "no physical failure"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "no physical failure",
+    "rounds": 0
+  },
+  "budget": {
+    "rounds": {
+      "budget": 2,
+      "used": 0,
+      "left": 2
+    },
+    "geom_calls": {
+      "budget": 16,
+      "charged": 0,
+      "left": 16
+    },
+    "sim_calls": {
+      "budget": 8,
+      "charged": 0,
+      "left": 8
+    },
+    "verifier_spend": {
+      "geom_calls": 5,
+      "sim_calls": 1
+    },
+    "rounds_produced": 0,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "demo-peg-hole-clear",
+    "kind": "peg_hole",
+    "requirement": "The same 60x40x12 plate with an 8 mm-deep blind socket and the same 20 mm peg plate, but the peg is 9.7 mm against a 10.0 mm socket: 0.15 mm radial clearance, a slip fit the loop should accept without an edit.",
+    "initial_content_key": "sha256:2b237cf964df2ce050c1d53ca2feaa10",
+    "final_content_key": "sha256:2b237cf964df2ce050c1d53ca2feaa10",
+    "initial_clearance_mm": 0.15,
+    "final_clearance_mm": 0.15,
+    "final_revision": 1,
+    "provenance": {
+      "interface_kind": "fixture:hand",
+      "params": "fixture:hand",
+      "why": "the good half of the peg-hole pair; 0.15 mm per side sits mid-band in the default slip fit, so the only thing this design has to be is clean"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [],
+  "llm": {
+    "calls": 0,
+    "tokens": 0,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 1,
+    "not_evaluated_by": [
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge"
+    }
+  },
+  "trace": {
+    "path": "runs\\first-dit\\trace.jsonl",
+    "rows": 3,
+    "replay_hashes": []
+  },
+  "geometry": {
+    "dir": "runs\\first-dit\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\first-dit\\geometry\\body.stl",
+        "hash": "sha256:65162057a37ddca484d6456aa2ce9909",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\first-dit\\geometry\\insert.stl",
+        "hash": "sha256:b69249a4732a49f4a5fdc3f594dde8a3",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}
