@@ -423,6 +423,11 @@ class MaterializedDesign:
     #: The insertion facts the builder reported, so a verifier never guesses an axis.
     mate_axis: Vec3 = (0.0, 0.0, 1.0)
     approach_mm: float = 6.0
+    #: Per-interface insertion facts, keyed by interface id. Empty for the two-part
+    #: case, where `mate_axis`/`approach_mm` above *are* the interface's facts. A
+    #: chain needs this: one global axis would sweep every pair in the same
+    #: direction, and report the joints whose normal points elsewhere as blocked.
+    interfaces: dict = field(default_factory=dict)
 
     def view(self) -> DesignView:
         return DesignView(
@@ -485,6 +490,7 @@ def assembly_from_spec(
     geometry_hashes: dict[str, str] | None = None,
     mate_axis: Vec3 | None = None,
     approach_mm: float | None = None,
+    interfaces: dict[str, dict] | None = None,
     parent: str | None = None,
     version: int = 1,
 ) -> Assembly:
@@ -566,6 +572,7 @@ def assembly_from_spec(
             **landmarks,
             **({"mate_axis": list(mate_axis)} if mate_axis is not None else {}),
             **({"approach_mm": float(approach_mm)} if approach_mm is not None else {}),
+            **({"interfaces": dict(interfaces)} if interfaces else {}),
         },
         parent=parent,
     )

@@ -73,6 +73,9 @@ def materialize(spec: DesignSpec, out_dir: Path) -> MaterializedDesign:
     geometry_dir = root / "geometry"
     geometry_dir.mkdir(parents=True, exist_ok=True)
 
+    if any(part.source for part in spec.parts):
+        return _materialize_decomposed(spec, root, geometry_dir)
+
     _require_buildable(spec)
     built = builder_for(spec.interface.kind).build(spec)
     _require_solids(spec, built.meshes)
@@ -112,6 +115,118 @@ def materialize(spec: DesignSpec, out_dir: Path) -> MaterializedDesign:
         mate_axis=built.mate_axis,
         approach_mm=built.approach_mm,
     )
+
+
+def _materialize_decomposed(
+    spec: DesignSpec, root: Path, geometry_dir: Path
+) -> MaterializedDesign:
+    """Machine every interface into the decomposed blanks and write the run.
+
+    The blanks come from `<root>/parts/`, hash-checked against `PartSpec.source`.
+    Each interface then cuts a socket into its host and grows a peg on its mating
+    part — sequentially, because a part in the middle of a chain carries both, and
+    a boolean per interface is the only order-independent way to get there.
+
+    The per-interface frames are recorded on the assembly, not just returned: a
+    verifier looking at one pair needs *that pair's* axis. With one global axis,
+    every pair in a chain would be swept in the same direction, and a joint whose
+    normal points elsewhere would be reported blocked.
+    """
+    from pah.design.decompose import check_store
+    from pah.design.machining import add_peg, cut_socket
+    from pah.design.pairing import contact_of
+
+    parametric = sorted(part.id for part in spec.parts if not part.source)
+    if parametric:
+        raise ValueError(
+            f"parts {parametric!r} have no `source`, so they are not decomposed "
+            "blanks; a spec may not mix decomposed parts with parametric ones"
+        )
+
+    blanks = check_store(spec, root)
+    meshes = {
+        part.id: _as_solid(trimesh.load(blanks[part.id], force="mesh"), part.id)
+        for part in spec.parts
+    }
+
+    facts: dict[str, dict] = {}
+    for interface in spec.interfaces:
+        host = spec.part(interface.a)
+        guest = spec.part(interface.b)
+        contact = contact_of(host, guest)
+        if contact is None:
+            raise ValueError(
+                f"interface {interface.id!r} is between {host.id!r} and {guest.id!r}, "
+                "but their envelopes are no longer adjacent; the spec's poses and the "
+                "blanks disagree, which means the spec was edited after decomposition"
+            )
+        axis, point = contact.axis, contact.point_mm
+        params = interface.validated_params()
+        meshes[host.id] = cut_socket(
+            meshes[host.id],
+            axis=axis,
+            point=point,
+            d_hole_mm=params.d_hole_mm,
+            depth_mm=params.engage_mm,
+        )
+        meshes[guest.id] = add_peg(
+            meshes[guest.id],
+            axis=axis,
+            point=point,
+            d_peg_mm=params.d_peg_mm,
+            engage_mm=params.engage_mm,
+        )
+        facts[interface.id] = {
+            "mate_axis": list(axis),
+            "approach_mm": float(params.approach_mm),
+        }
+
+    _require_solids(spec, meshes)
+
+    spec_path = root / "spec.json"
+    spec_path.write_text(
+        json.dumps(spec.model_dump(mode="json"), indent=2, sort_keys=True, ensure_ascii=False)
+        + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    paths: dict[str, str] = {}
+    for part in spec.parts:
+        target = geometry_dir / f"{part.id}.stl"
+        target.write_bytes(meshes[part.id].export(file_type="stl"))
+        paths[part.id] = str(target)
+
+    assembly = assembly_from_spec(
+        spec=spec,
+        geometry_paths=paths,
+        interfaces=facts,
+    )
+    first = next(iter(facts.values()), None) or {}
+    return MaterializedDesign(
+        spec=spec,
+        assembly=assembly,
+        meshes=dict(meshes),
+        paths=paths,
+        root=root,
+        mate_axis=tuple(first.get("mate_axis", (0.0, 0.0, 1.0))),
+        approach_mm=float(first.get("approach_mm", 6.0)),
+        interfaces=facts,
+    )
+
+
+def _as_solid(mesh: trimesh.Trimesh, part_id: str) -> trimesh.Trimesh:
+    """A loaded blank as one closed solid, or a refusal naming the part."""
+    if isinstance(mesh, trimesh.Scene):
+        mesh = trimesh.util.concatenate(list(mesh.geometry.values()))
+    if not isinstance(mesh, trimesh.Trimesh):
+        raise TypeError(f"blank for part {part_id!r} is a {type(mesh).__name__}, not a mesh")
+    if not mesh.is_watertight or mesh.volume <= 0.0:
+        raise ValueError(
+            f"blank for part {part_id!r} is not a closed solid "
+            f"(watertight={mesh.is_watertight}, volume={mesh.volume!r})"
+        )
+    return mesh
 
 
 def _require_buildable(spec: DesignSpec) -> None:

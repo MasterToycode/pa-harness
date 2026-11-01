@@ -89,6 +89,7 @@ def _parser() -> argparse.ArgumentParser:
     # two M0 commands do not pay for the geometry stack (the modules keep their own
     # heavy imports inside their handlers for the same reason).
     from pah.cli import build as build_cli  # noqa: PLC0415
+    from pah.cli import decompose as decompose_cli  # noqa: PLC0415
     from pah.cli import design as design_cli  # noqa: PLC0415
     from pah.cli import eval as eval_cli  # noqa: PLC0415
     from pah.cli import export as export_cli  # noqa: PLC0415
@@ -100,6 +101,7 @@ def _parser() -> argparse.ArgumentParser:
     from pah.cli import serve as serve_cli  # noqa: PLC0415
 
     build_cli.add_parser(groups)
+    decompose_cli.add_parser(groups)
     run_cli.add_parser(groups)
     preview_cli.add_parser(groups)
     serve_cli.add_parser(groups)

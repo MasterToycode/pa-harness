@@ -1282,6 +1282,25 @@ ASSEMBLY_VERIFIERS = ("fit_clearance", "insert_material", "interface_interferenc
 PRINT_VERIFIERS = ("printability", "insert_material")
 
 
+def _did_not_run(verifiers: Sequence[str], notes: Mapping[str, str]) -> list[str]:
+    """Which of `verifiers` reported a capability boundary rather than a result.
+
+    The key is either the verifier id (a two-part design has exactly one view) or
+    `<interface>/<verifier>` (an N-part design judges each joint separately). Both
+    must count: matching only the bare id made a three-part run report
+    `validated: full` while two checks per joint had, in fact, not run — the exact
+    overclaim the three-state split exists to prevent. Measured 2026-11-02 on the
+    first three-part decompose run.
+    """
+    keys = set(notes)
+    return sorted(
+        verifier
+        for verifier in verifiers
+        if verifier in keys
+        or any(key.endswith(f"/{verifier}") for key in keys)
+    )
+
+
 def _verdicts(
     certificates: Sequence[FailureCertificate],
     notes: Mapping[str, str],
@@ -1309,8 +1328,8 @@ def _verdicts(
             watertight[path.stem] = False
     closed = bool(watertight) and all(watertight.values())
 
-    assembly_missing = sorted(v for v in ASSEMBLY_VERIFIERS if v in notes)
-    print_missing = sorted(v for v in PRINT_VERIFIERS if v in notes)
+    assembly_missing = _did_not_run(ASSEMBLY_VERIFIERS, notes)
+    print_missing = _did_not_run(PRINT_VERIFIERS, notes)
 
     return {
         "assemblable": {

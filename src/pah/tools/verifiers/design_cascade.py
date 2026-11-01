@@ -46,6 +46,7 @@ the disabled set travels with the registry.
 from __future__ import annotations
 
 import importlib
+from dataclasses import replace
 from pathlib import Path
 
 from pah.core.model import Assembly, Cost, FailureCertificate
@@ -177,8 +178,26 @@ class DesignVerifierCascade:
 
     # -- `LoopVerifiers` ---------------------------------------------------
     def check(self, assembly: Assembly) -> list[FailureCertificate]:
-        """The evidence for `assembly`, cheapest verifier first."""
+        """The evidence for `assembly`, cheapest verifier first.
+
+        Two shapes, one entry point. A two-part, one-interface design goes through the
+        original single-view path unchanged. A decomposition (N parts, or any part
+        carrying a `source` mesh) is judged **one interface at a time**, each pair in
+        its own two-part shadow (`design/pairs.py`) with its own insertion axis — the
+        verifiers never learn that the assembly has more than two pieces, which is
+        why six pieces of physics did not have to be rewritten for N parts.
+        """
         self._notes = {}
+        try:
+            spec = spec_of(assembly)
+        except Exception as error:
+            # No spec, so no locus to name; "we could not describe what to look at"
+            # is unknown, not healthy.
+            return [self._environment(assembly, error)]
+
+        if len(spec.interfaces) > 1 or any(part.source for part in spec.parts):
+            return self._check_per_pair(assembly, spec)
+
         try:
             view = self._view(assembly)
         except Exception as error:
@@ -189,27 +208,88 @@ class DesignVerifierCascade:
 
         certificates: list[FailureCertificate] = []
         notes: dict[str, str] = {}
+        self._run_registry(view, certificates, notes)
+        self._notes = notes
+        return certificates
+
+    def _check_per_pair(
+        self, assembly: Assembly, spec
+    ) -> list[FailureCertificate]:
+        """Every interface judged in its own two-part shadow, tagged by interface."""
+        from pah.design.pairs import pair_view  # noqa: PLC0415
+
+        try:
+            design = self._materialise(spec)
+        except Exception as error:
+            return [self._environment(assembly, error)]
+
+        certificates: list[FailureCertificate] = []
+        notes: dict[str, str] = {}
+        for interface in spec.interfaces:
+            pair = pair_view(design, interface.id)
+            # `insert_material` asks "is this generated insert a solid rather than a
+            # shell" by comparing its volume to a parametric reference. A decomposed
+            # part is neither: it has no reference cylinder to be a fraction of, and
+            # its volume is whatever the object's material is. Running it would fail
+            # every pair with `excess_material`, which is a category error rather than
+            # a finding.
+            #
+            # `physics_settle` models "a peg-shaped insert seated in a bore": it
+            # measures the bore wall around the insert axis and refuses a view where
+            # the wall is under half the insert's radius. A decomposed part is a plate
+            # or a block — 60 mm wide around a 4 mm socket — so that guard fires on a
+            # perfectly good joint and reports `not evaluated` for every pair. Its
+            # honest status is "this check's model does not apply yet", and the note
+            # below says exactly that. The replacement is a joint-retention settle
+            # (drop the mating part along the axis, require it to stay attached),
+            # which is a different model and is tracked as the next physics step.
+            skip: set[str] = {"insert_material", "physics_settle"}
+            self._run_registry(pair.view, certificates, notes, tag=interface.id, skip=skip)
+            notes[f"{interface.id}/physics_settle"] = (
+                "physics not evaluated: the settle model assumes a peg-shaped insert "
+                "in a bore; this is a decomposed part, so the joint-retention settle "
+                "is the check that applies and it is not built yet"
+            )
+        self._notes = notes
+        return certificates
+
+    def _run_registry(
+        self,
+        view: DesignView,
+        certificates: list[FailureCertificate],
+        notes: dict[str, str],
+        *,
+        tag: str | None = None,
+        skip: set[str] | None = None,
+    ) -> None:
+        """Run every enabled verifier against `view`, appending what it found.
+
+        `tag` names the interface a certificate belongs to. Without it, an N-part
+        report says "clearance out of band" and a reader cannot tell which of four
+        joints needs the repair — and the repair operators take an interface id.
+        """
+        skip = skip or set()
         for verifier_id in self.registry.ids():
-            if verifier_id in self.registry.disabled():
+            if verifier_id in self.registry.disabled() or verifier_id in skip:
                 continue
             verifier = self.registry.get(verifier_id)
             try:
                 found = list(verifier.check(view))
             except Exception as error:
                 self._charge(verifier, ran=False)
-                certificates.append(self.registry.fail_closed_view(view, error))
+                certificates.append(
+                    _tagged(self.registry.fail_closed_view(view, error), tag)
+                )
                 if self.stop_on_hard:
                     break
                 continue
             self._charge(verifier, ran=True)
             note = str(getattr(verifier, "last_note", "") or "")
             if note:
-                notes[verifier_id] = note
-            certificates.extend(found)
+                notes[f"{tag}/{verifier_id}" if tag else verifier_id] = note
+            certificates.extend(_tagged(cert, tag) for cert in found)
             if self.stop_on_hard and any(cert.family != _ENVIRONMENT for cert in found):
                 break
-        self._notes = notes
-        return certificates
 
     # -- view --------------------------------------------------------------
     def _view(self, assembly: Assembly) -> DesignView:
@@ -321,6 +401,15 @@ def _default_materializer() -> Materializer:
     from pah.design.materialize import materialize
 
     return materialize
+
+
+def _tagged(cert: FailureCertificate, tag: str | None) -> FailureCertificate:
+    """`cert` with the interface it came from written into its locus."""
+    if not tag:
+        return cert
+    locus = dict(cert.locus or {})
+    locus["interface"] = tag
+    return replace(cert, locus=locus)
 
 
 def _plus(base: Cost, *, geom: int = 0, sim: int = 0) -> Cost:

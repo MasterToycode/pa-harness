@@ -102,6 +102,16 @@ class PartSpec(_Frozen):
     #: XYZ extrinsic rotation in degrees, applied about the local origin.
     rot_deg: Vec3 = (0.0, 0.0, 0.0)
     material: str = "PLA"
+    #: The content address of the blank mesh this part was decomposed from.
+    #:
+    #: Empty means "this part's geometry is the parametric blank `size_mm`
+    #: describes" — the two-part case, where the builder invents the shape. Set means
+    #: a decomposer produced the shape and the materialiser must machine the
+    #: interfaces into *that* mesh. The hash is in the spec, not the mesh, for the
+    #: same reason `geometry_hash` is: an episode has to be reconstructible from
+    #: `spec.json` plus a known store of blanks, and a path in the spec would make the
+    #: same design hash differently on another machine.
+    source: str = ""
 
     @model_validator(mode="after")
     def _positive_envelope(self) -> PartSpec:
