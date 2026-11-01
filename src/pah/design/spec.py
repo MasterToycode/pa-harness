@@ -19,9 +19,14 @@ Invariants this file enforces at construction time
 * **Millimetres, degrees, one convention.** Every length in the spec is mm and
   every angle is degrees. No unit field, because a unit field that can disagree
   with the numbers is a bug source, not a safeguard.
-* **Exactly one interface, exactly two parts** in v1. The loop, the operator
-  table and the CLI all assume one connection; widening to N is a later change
-  that must not be smuggled in as "just a loop".
+* **Any number of parts, any number of interfaces, one connected assembly.** A
+  decomposition hands back N printable pieces; an assembly is what they form
+  together. The graph of interfaces must therefore *connect* every part: a part
+  that no interface reaches is a part nothing holds, and if two solids are meant
+  to ship as one object without a connector between them, that is two designs,
+  not one. What is still fixed is the *arity of a connection*: one interface joins
+  exactly one pair (`a`, `b`), because every connector kind PAH ships is a
+  two-body mating feature. Widening past that means a kind, not a loop.
 * **A kind is a string, its parameters are a separate model.** Connector kinds
   are plugins (§4 of the contract): the spec stores `kind` plus a plain dict, and
   the kind's own pydantic model validates that dict at materialisation time.
@@ -63,7 +68,7 @@ Vec3 = tuple[float, float, float]
 #: tuple is the whole set except code that needs a default.
 ConnectorKindName = Literal["peg_hole", "snap_fit", "dovetail"]
 
-PART_ROLES = ("body", "insert")
+PART_ROLES = ("body", "insert", "part")
 
 
 class _Frozen(BaseModel):
@@ -85,7 +90,12 @@ class PartSpec(_Frozen):
     """
 
     id: str = Field(min_length=1)
-    role: Literal["body", "insert"]
+    #: A *hint about the part's origin*, never about topology. `body` and `insert`
+    #: are the two-part case this project started from; `part` is any piece a
+    #: decomposition returned. Which side of a connector a part sits on is decided
+    #: by the interface's `a`/`b`, so a `body` may be the `b` side of one interface
+    #: and the `a` side of another. Nothing may infer the graph from roles.
+    role: Literal["body", "insert", "part"]
     size_mm: Vec3 = (60.0, 40.0, 12.0)
     #: World-frame translation of the part's local origin, in mm.
     pose_mm: Vec3 = (0.0, 0.0, 0.0)
@@ -286,7 +296,10 @@ class DesignSpec(_Frozen):
     spec_id: str = Field(min_length=1)
     requirement: str = ""
     parts: tuple[PartSpec, ...]
-    interfaces: tuple[InterfaceSpec, ...]
+    #: One entry per mating pair. Empty is legal only for a single-part spec, and
+    #: the validator below is what says so — a two-part spec with no interfaces is
+    #: refused there with a message that names the parts nothing holds.
+    interfaces: tuple[InterfaceSpec, ...] = ()
     constraints: FitConstraints = Field(default_factory=FitConstraints)
     revision: int = Field(default=1, ge=1)
     #: Who decided what — `{"interface_kind": "llm:qwen3", "params": "rule"}`.
@@ -295,49 +308,170 @@ class DesignSpec(_Frozen):
     api_version: str = "1"
 
     @model_validator(mode="after")
-    def _v1_shape(self) -> DesignSpec:
-        roles = sorted(part.role for part in self.parts)
-        if roles != ["body", "insert"]:
-            raise ValueError(
-                "v1 supports exactly one 'body' and one 'insert' part, got roles "
-                f"{roles!r} (parts={[p.id for p in self.parts]!r})"
-            )
+    def _shape(self) -> DesignSpec:
+        """The structural invariants: unique ids, real references, one assembly.
+
+        All of them are checked at construction rather than at materialisation, for
+        the same reason an unbuildable parameter set is: a spec that cannot be built
+        must fail where it is *written*, so the repair loop sees a bad edit as a bad
+        edit instead of a verifier mystery three stages later.
+        """
+        if not self.parts:
+            raise ValueError("a spec needs at least one part")
         ids = {part.id for part in self.parts}
         if len(ids) != len(self.parts):
             raise ValueError(f"duplicate part ids in {[p.id for p in self.parts]!r}")
-        if len(self.interfaces) != 1:
+
+        for role in ("body", "insert"):
+            holders = [part.id for part in self.parts if part.role == role]
+            if len(holders) > 1:
+                raise ValueError(
+                    f"at most one part may be the {role!r}, got {holders!r}; use "
+                    "role='part' for the extra pieces a decomposition returns"
+                )
+
+        iface_ids = [iface.id for iface in self.interfaces]
+        if len(set(iface_ids)) != len(iface_ids):
+            raise ValueError(f"duplicate interface ids in {iface_ids!r}")
+
+        pairs: set[frozenset[str]] = set()
+        for iface in self.interfaces:
+            if iface.a == iface.b:
+                raise ValueError(f"interface {iface.id!r} joins {iface.a!r} to itself")
+            unknown = sorted({iface.a, iface.b} - ids)
+            if unknown:
+                raise ValueError(
+                    f"interface {iface.id!r} joins {unknown!r}, which "
+                    f"{'is' if len(unknown) == 1 else 'are'} not among the parts "
+                    f"{sorted(ids)!r}"
+                )
+            pair = frozenset((iface.a, iface.b))
+            if pair in pairs:
+                raise ValueError(
+                    f"two interfaces join the same pair {sorted(pair)!r}; one mating "
+                    "pair needs one connection, otherwise two connectors compete for "
+                    "the same space and neither finishes its insertion path"
+                )
+            pairs.add(pair)
+
+        if len(self.parts) == 1 and self.interfaces:
             raise ValueError(
-                f"v1 supports exactly one interface, got {len(self.interfaces)}"
+                f"a single-part spec cannot carry interfaces, got {iface_ids!r}"
             )
-        iface = self.interfaces[0]
-        if {iface.a, iface.b} != ids:
-            raise ValueError(
-                f"interface {iface.id!r} joins {iface.a!r}/{iface.b!r}, but the parts "
-                f"are {sorted(ids)!r}"
-            )
-        if self.body.id != iface.a or self.insert.id != iface.b:
-            raise ValueError(
-                "the interface's 'a' must be the body and 'b' the insert; got a="
-                f"{iface.a!r} b={iface.b!r}"
-            )
+        if len(self.parts) > 1:
+            reached = {side for iface in self.interfaces for side in (iface.a, iface.b)}
+            unreached = sorted(ids - reached)
+            if unreached:
+                raise ValueError(
+                    f"part(s) {unreached!r} carry no interface, so nothing holds them "
+                    "to the assembly; connect them or leave them out of the spec"
+                )
+            clusters = self._clusters()
+            if len(clusters) > 1:
+                raise ValueError(
+                    "the interfaces do not connect every part: an assembly is one "
+                    f"rigid group, and {sorted(ids)!r} splits into {len(clusters)} "
+                    f"(sizes {sorted(len(c) for c in clusters)!r})"
+                )
+
         # Validate the parameters now, not at materialisation: an unbuildable spec
         # must fail where it is written.
         for interface in self.interfaces:
             interface.validated_params()
         return self
 
+    def _clusters(self) -> list[set[str]]:
+        """Connected components of the interface graph, for the invariants above."""
+        adjacency: dict[str, set[str]] = {part.id: set() for part in self.parts}
+        for iface in self.interfaces:
+            adjacency[iface.a].add(iface.b)
+            adjacency[iface.b].add(iface.a)
+        seen: set[str] = set()
+        clusters: list[set[str]] = []
+        for start in adjacency:
+            if start in seen:
+                continue
+            group: set[str] = set()
+            stack = [start]
+            while stack:
+                node = stack.pop()
+                if node in group:
+                    continue
+                group.add(node)
+                stack.extend(adjacency[node] - group)
+            seen |= group
+            clusters.append(group)
+        return clusters
+
     # -- lookups -----------------------------------------------------------
     @property
     def body(self) -> PartSpec:
-        return next(part for part in self.parts if part.role == "body")
+        """The one part tagged `body`.
+
+        Raises instead of guessing for an N-part spec: `next(...)` on an empty match
+        used to surface as a bare `StopIteration`, which reads like a bug in the
+        caller rather than "this shorthand does not apply here".
+        """
+        holders = [part for part in self.parts if part.role == "body"]
+        if len(holders) != 1:
+            raise ValueError(
+                f"spec {self.spec_id!r} has {len(holders)} parts tagged 'body' "
+                f"({[p.id for p in holders]!r}); the two-part shorthand does not "
+                "apply, use `parts` / `interfaces_of`"
+            )
+        return holders[0]
 
     @property
     def insert(self) -> PartSpec:
-        return next(part for part in self.parts if part.role == "insert")
+        """The one part tagged `insert`; same refusal as `body` for an N-part spec."""
+        holders = [part for part in self.parts if part.role == "insert"]
+        if len(holders) != 1:
+            raise ValueError(
+                f"spec {self.spec_id!r} has {len(holders)} parts tagged 'insert' "
+                f"({[p.id for p in holders]!r}); the two-part shorthand does not "
+                "apply, use `parts` / `interfaces_of`"
+            )
+        return holders[0]
 
     @property
     def interface(self) -> InterfaceSpec:
+        """The single interface, for the two-part case; raises when there are many."""
+        if len(self.interfaces) != 1:
+            raise ValueError(
+                f"spec {self.spec_id!r} has {len(self.interfaces)} interfaces; use "
+                "`interfaces`, `interface_by_id` or `interfaces_of(part_id)`"
+            )
         return self.interfaces[0]
+
+    def part_ids(self) -> tuple[str, ...]:
+        return tuple(part.id for part in self.parts)
+
+    def interface_by_id(self, interface_id: str) -> InterfaceSpec:
+        for iface in self.interfaces:
+            if iface.id == interface_id:
+                return iface
+        raise KeyError(
+            f"no interface {interface_id!r} in spec {self.spec_id!r}; the interfaces "
+            f"are {[i.id for i in self.interfaces]!r}"
+        )
+
+    def interfaces_of(self, part_id: str) -> tuple[InterfaceSpec, ...]:
+        """Every interface the part takes part in, in spec order."""
+        return tuple(
+            iface for iface in self.interfaces if part_id in (iface.a, iface.b)
+        )
+
+    def neighbour_of(self, interface: str | InterfaceSpec, part_id: str) -> str:
+        """The part on the other side of `interface` from `part_id`."""
+        iface = interface if isinstance(interface, InterfaceSpec) else self.interface_by_id(interface)
+        if part_id == iface.a:
+            return iface.b
+        if part_id == iface.b:
+            return iface.a
+        raise KeyError(
+            f"interface {iface.id!r} does not touch part {part_id!r} "
+            f"(it joins {iface.a!r} and {iface.b!r})"
+        )
 
     @property
     def clearance_mm(self) -> float:
@@ -355,9 +489,13 @@ class DesignSpec(_Frozen):
         return DesignSpec.model_validate(payload)
 
     def with_interface(
-        self, *, kind: str | None = None, params: dict | None = None
+        self,
+        *,
+        kind: str | None = None,
+        params: dict | None = None,
+        interface_id: str | None = None,
     ) -> DesignSpec:
-        """A new revision with the interface's kind and/or parameters replaced.
+        """A new revision with one interface's kind and/or parameters replaced.
 
         Two different operations, because they have two different meanings:
 
@@ -368,8 +506,17 @@ class DesignSpec(_Frozen):
           would reject them. Switching kind without supplying the new kind's
           parameters is a `ValueError`, not a silent half-migration: a dovetail
           described by peg diameters is a spec nobody can materialise.
+
+        `interface_id` names the interface to edit. It is required by construction
+        once a spec has more than one: `self.interface` refuses to guess which
+        connection a repair meant, and silently editing the first one would make
+        every N-part repair depend on the order a decomposition happened to emit.
         """
-        current = self.interface
+        current = (
+            self.interface
+            if interface_id is None
+            else self.interface_by_id(interface_id)
+        )
         new_kind = kind if kind is not None else current.kind
         if new_kind != current.kind:
             if not params:
@@ -382,7 +529,12 @@ class DesignSpec(_Frozen):
         else:
             payload = {**current.params, **(params or {})}
         replacement = current.model_copy(update={"kind": new_kind, "params": payload})
-        return self.edit(interfaces=(replacement,))
+        return self.edit(
+            interfaces=tuple(
+                replacement if iface.id == current.id else iface
+                for iface in self.interfaces
+            )
+        )
 
     def with_parts(self, *parts: PartSpec) -> DesignSpec:
         """A new revision with the part set replaced (poses move this way)."""
@@ -406,7 +558,15 @@ class DesignSpec(_Frozen):
         """
         payload = {
             "parts": [part.model_dump() for part in self.parts],
-            "interface": self.interface.model_dump(),
+            # Sorted by id: two specs that describe the same assembly are the same
+            # content no matter what order the interfaces were *discovered* in. A
+            # decomposition that walks its bboxes in a different order did not
+            # design anything differently, and hashing the order would make the
+            # loop's cycle detection report progress for a reshuffle.
+            "interfaces": [
+                iface.model_dump()
+                for iface in sorted(self.interfaces, key=lambda i: (i.id, i.a, i.b))
+            ],
             "constraints": self.constraints.model_dump(),
         }
         blob = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
@@ -414,7 +574,7 @@ class DesignSpec(_Frozen):
 
     def short(self) -> str:
         """One line a trace row or a CLI can print."""
-        return (
-            f"{self.spec_id} r{self.revision} {self.interface.kind} "
-            f"c={self.clearance_mm:+.3f}mm"
-        )
+        head = f"{self.spec_id} r{self.revision}"
+        if len(self.interfaces) != 1:
+            return f"{head} {len(self.parts)} parts / {len(self.interfaces)} interfaces"
+        return f"{head} {self.interface.kind} c={self.clearance_mm:+.3f}mm"
