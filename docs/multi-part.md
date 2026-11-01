@@ -80,6 +80,27 @@ Blender 转 FBX（15.4 MB）→ COS 预签名 URL → `SubmitHunyuan3DPartJob`�
 因此 `examples/xpart_decomposer.py` 做四件事：修（三级，逐级记录）、缩（按目标 mm）、
 命名（用内层 `part_N`）、**记录丢掉了哪些件**（不静默跳过）。
 
+### 4.1 把真实结果放进管线跑一遍（2026-11-02，实测）
+
+```bash
+pah decompose 000.glb --decomposer dir:D:\Temp\pah-xpart-probe --size-mm 120 --max-interfaces 2
+```
+
+| 阶段 | 结果 |
+|---|---|
+| 载入 19 个 GLB | 19 件全部修复成水密实体；`scale_mm = 113.97`（union 1.053 → 120 mm） |
+| 自动配对 | 找到多对相邻；接口上限 2，其余带原因跳过（「beyond the interface limit」） |
+| 组装成 spec | 4 件 3 接口中取最大连通组 → **2 件 1~2 接口**，15 件被列为 `unconnected_parts` |
+| 逐对验证（454 s） | **assemblable 否**：`geometric_interference` + `insertion_path_blocked`（两个接口都有）<br>**printable 否**：`below_min_wall` |
+| 导出 | 3MF + 逐件 STL 照常写出（可检查，但报告已判否） |
+
+**这个「否」是正确结论，不是 bug**：X-Part 的件互相嵌入、壁厚小于 1.2 mm，
+打印出来既塞不进也立不住。这一轮交付的是**测出这件事的能力**；把它修好（分区去重叠、
+补厚壁）是下一阶段 agent 修复循环的工作。
+
+代价参考：`--no-verify` 全流程 11~14 s；带完整验证（干涉 + 插入路径 + 壁厚 + 间隙）
+在 4 万面/件的量级上约 454 s —— 插入路径一个接口就要做 14 次布尔。
+
 ---
 
 ## 5. 验证状态：哪些是「证明」，哪些是「没测」
