@@ -1,4 +1,4 @@
-"""Geometry materialisation: a `DesignSpec` in, two solids plus an `Assembly` out.
+"""Geometry materialisation: a `DesignSpec` in, one solid per part plus an `Assembly` out.
 
 This is the seam where the design plane touches the disk, so it is deliberately
 dumb. `builder_for(spec.interface.kind).build(spec)` decides the shapes; this
@@ -73,6 +73,7 @@ def materialize(spec: DesignSpec, out_dir: Path) -> MaterializedDesign:
     geometry_dir = root / "geometry"
     geometry_dir.mkdir(parents=True, exist_ok=True)
 
+    _require_buildable(spec)
     built = builder_for(spec.interface.kind).build(spec)
     _require_solids(spec, built.meshes)
 
@@ -111,6 +112,36 @@ def materialize(spec: DesignSpec, out_dir: Path) -> MaterializedDesign:
         mate_axis=built.mate_axis,
         approach_mm=built.approach_mm,
     )
+
+
+def _require_buildable(spec: DesignSpec) -> None:
+    """Refuse, with the reason, the shapes this materialiser cannot build yet.
+
+    `ConnectorBuilder.build` is a **two-part** port: it returns one solid per part
+    from one interface. A spec can now hold N parts and M interfaces (a
+    decomposition returns many pieces), and building those needs the feature applied
+    per interface onto a shared blank — the piece of work that is not written yet.
+
+    Saying so here, by name and with the count, beats the alternative: letting it
+    fall through would surface as `spec.interface`'s "use `interfaces`" message,
+    which reads like a caller mistake and sends the reader to the wrong file. A
+    single-part spec lands here too, because there is no interface to take a kind
+    from.
+    """
+    if len(spec.parts) == 1 and not spec.interfaces:
+        raise NotImplementedError(
+            f"spec {spec.spec_id!r} has one part and no interfaces; this materialiser "
+            "builds connected assemblies (it needs a connector kind to know what to "
+            "cut). A standalone part needs a mesh materialiser, not a blank."
+        )
+    if len(spec.interfaces) > 1:
+        raise NotImplementedError(
+            f"spec {spec.spec_id!r} has {len(spec.parts)} parts and "
+            f"{len(spec.interfaces)} interfaces; the trimesh materialiser builds the "
+            "two-part, one-interface case. N-part machining (apply each interface's "
+            "feature onto the shared blank of both parts, then union per part) is not "
+            "written yet — `docs/architecture.md` tracks it as the multi-part step."
+        )
 
 
 def _require_solids(spec: DesignSpec, meshes: dict[str, trimesh.Trimesh]) -> None:

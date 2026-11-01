@@ -461,13 +461,20 @@ def geometry_hash(spec: DesignSpec, part_id: str) -> str:
       must agree on identity for the same numbers, or a cache keyed on geometry
       would silently miss forever.
 
-    The interface kind is in the digest so switching peg_hole -> snap_fit with
-    numerically identical parameters is a new assembly, not a cache hit.
+    The connector kind is inside `content_key`, so switching peg_hole -> snap_fit
+    with numerically identical parameters is a new assembly, not a cache hit.
     `GEOMETRY_VERSION` is in it so a *materialiser* change invalidates cached
     triangles too: without it, the peg_hole insert could change from "peg +
     handle" to a plain cylinder while every artifact kept its hash.
+
+    The digest is **spec-global on purpose**, even though the result is per part:
+    the builder port hands a kind the whole spec, so a plugin may legitimately read
+    any part's size or pose. Hashing only "this part and its own interface" would be
+    exact for the three builtin kinds and a stale-cache bug for the fourth one. An
+    over-invalidated cache costs a rebuild; an under-invalidated one ships geometry
+    that no longer matches the numbers.
     """
-    blob = f"{GEOMETRY_VERSION}|{spec.content_key()}|{part_id}|{spec.interface.kind}"
+    blob = f"{GEOMETRY_VERSION}|{spec.content_key()}|{part_id}"
     return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()[:32]
 
 
@@ -520,16 +527,27 @@ def assembly_from_spec(
         }
         for part in spec.parts
     )
-    joints = (
+    joints = tuple(
         {
-            "id": spec.interface.id,
-            "a": spec.interface.a,
-            "b": spec.interface.b,
-            "kind": spec.interface.kind,
-            "params": dict(spec.interface.params),
-        },
+            "id": iface.id,
+            "a": iface.a,
+            "b": iface.b,
+            "kind": iface.kind,
+            "params": dict(iface.params),
+        }
+        for iface in spec.interfaces
     )
-    body_id = spec.body.id
+    # `body_id`/`insert_id` are landmarks for the two-part case: a report wants to
+    # say "the insert" without re-reading roles. On an N-part spec there is no "the
+    # insert", so they are simply absent rather than filled with whichever part came
+    # first — a landmark that can be wrong is worse than one that is missing.
+    landmarks = {
+        f"{role}_id": part.id
+        for role in ("body", "insert")
+        for part in spec.parts
+        if part.role == role
+        and sum(1 for other in spec.parts if other.role == role) == 1
+    }
     assembly_id = key(
         "assembly",
         spec.spec_id,
@@ -545,8 +563,7 @@ def assembly_from_spec(
         connectors=(),
         constraints={
             SPEC_SLOT: spec.model_dump(),
-            "body_id": body_id,
-            "insert_id": spec.insert.id,
+            **landmarks,
             **({"mate_axis": list(mate_axis)} if mate_axis is not None else {}),
             **({"approach_mm": float(approach_mm)} if approach_mm is not None else {}),
         },
