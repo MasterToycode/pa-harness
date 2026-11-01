@@ -21,6 +21,9 @@
 pip install -e .                      # pah 命令
 python -m pytest -q                   # 637 tests
 
+pah providers doctor                  # 外部服务自检：配置 / 凭据 / 生成器目标（不花钱）
+pah providers doctor --call           # 各打一次真实调用（LLM 一次 completion / 生成器物化一次）
+
 pah design sanity                     # 5 个设计平面验证器自检（known_good/known_bad）
 pah design new --kind peg_hole --out runs/demo
 

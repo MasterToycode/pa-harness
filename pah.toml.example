@@ -26,8 +26,13 @@ compat = { max_tokens = 1200 }
 # billing = "gpu_seconds"
 
 [gen]
-# 几何由谁生成。当前版本只有参数化算子与 trimesh 物化，没有外部生成服务。
-default = "local-parametric"
+# 几何由谁生成。默认是参数化物化器（local）；换成你自己的 DiT/CAD 适配器时：
+#   default = "dit"
+#   [gen.providers.dit]
+#   kind = "python"
+#   compat = { target = "my_dit.materialize:materialize" }   # 或 "path/to/file.py:materialize"
+# 配了但加载不起来时，run 会明确失败，**不会**静默退回参数化几何。
+default = "local"
 
 [gen.providers.local]
 kind = "local-parametric"

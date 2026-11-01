@@ -195,13 +195,58 @@ def _require(module_name: str, what: str) -> Any:
 
 
 def resolve_materializer() -> Any:
-    """T1: `pah.design.materialize.materialize(spec, out_dir) -> MaterializedDesign`.
+    """T1's `materialize(spec, out_dir) -> MaterializedDesign` — the shipped generator.
 
-    The runtime does not call it — T2's cascade does, when the assembly it is asked
-    to judge has no `geom.path` yet. It is resolved here anyway, as a preflight, so
-    that a missing T1 is reported as "the geometry materialiser has not landed yet"
-    rather than as a constructor failure inside the cascade.
+    Zero arguments on purpose: this is the preflight other modules and tests already
+    call. Choosing *which* generator a run uses is `resolve_generator`, which falls
+    back to this one.
     """
+    return _default_materializer()
+
+
+def resolve_generator(config_path: str | Path | None = None) -> Any:
+    """What this run's geometry comes from: a configured python adapter, or T1's.
+
+    1. **`[gen] default = "<id>"` whose provider kind is `python`** — a DiT or CAD
+       adapter imported by name or by file path (`compat = { target = ... }`). This is
+       the extension point `docs/contracts/v2-interfaces.md` §2 calls the
+       `Materializer` port. A configured but broken adapter is an **error**, never a
+       silent fall back to trimesh: the report names which generator built the parts
+       (`run.generator`), and a run that quietly used different geometry than its
+       manifest claims is a number nobody can reproduce.
+    2. **anything else** — T1's parametric materialiser.
+
+    Resolved by the runtime and handed to the cascade; resolving it here turns "the
+    generator is missing" into one sentence before anything is built, instead of a
+    constructor failure inside the cascade.
+    """
+    configured = _python_gen_provider(config_path)
+    if configured is not None:
+        from pah.app.providers import resolve_python_target  # noqa: PLC0415
+
+        return resolve_python_target(configured)
+    # Deliberately through `resolve_materializer`, not `_default_materializer`: that
+    # is the seam a caller (or a test) patches to simulate a missing T1, and it must
+    # stay the one place that decides what "no configured generator" means.
+    return resolve_materializer()
+
+
+def _python_gen_provider(config_path: str | Path | None = None) -> Any:
+    """The `[gen]` provider when it is a python target, else `None` (T1 is the default)."""
+    from pah.app.providers import ProviderError, load_registry  # noqa: PLC0415
+    from pah.plugins import resolve_config_path  # noqa: PLC0415
+
+    path = resolve_config_path(config_path)
+    registry = load_registry(path if path is not None else "pah.toml")
+    try:
+        config = registry.choose("gen")
+    except ProviderError:
+        return None
+    return config if str(getattr(config, "kind", "")) == "python" else None
+
+
+def _default_materializer() -> Any:
+    """T1's `materialize(spec, out_dir) -> MaterializedDesign`, or a clear refusal."""
     module = _require("pah.design.materialize", "the geometry materialiser (T1)")
     materialize = getattr(module, "materialize", None)
     if not callable(materialize):
@@ -210,6 +255,25 @@ def resolve_materializer() -> Any:
             "`materialize(spec, out_dir)` in pah.design.materialize"
         )
     return materialize
+
+
+def configured_generator(config_path: str | Path | None = None) -> str:
+    """A label for the report: which generator built the parts.
+
+    `"local-parametric"` when nothing is configured, else `"<provider>:<kind>"`.
+    A report that cannot name its generator cannot be compared with one that used a
+    different model, which is the whole reason the port exists.
+    """
+    from pah.app.providers import ProviderError, load_registry  # noqa: PLC0415
+    from pah.plugins import resolve_config_path  # noqa: PLC0415
+
+    path = resolve_config_path(config_path)
+    registry = load_registry(path if path is not None else "pah.toml")
+    try:
+        config = registry.choose("gen")
+    except ProviderError:
+        return "local-parametric"
+    return f"{config.id}:{config.kind}"
 
 
 def resolve_design_registry() -> Any:
@@ -232,26 +296,27 @@ def resolve_design_registry() -> Any:
     )
 
 
-def resolve_cascade(registry: Any, root: str | Path) -> Any:
-    """T2: `DesignVerifierCascade(registry, root)`, the loop's `LoopVerifiers`.
+def resolve_cascade(registry: Any, root: str | Path, materializer: Any = None) -> Any:
+    """T2: `DesignVerifierCascade(registry, root[, materializer])`, the loop's `LoopVerifiers`.
 
     `root` is where the cascade materialises `root/geometry/<part_id>.stl` when it
     is handed a still-pure assembly; the runtime passes the run directory so those
     files are the run's `geometry/` deliverable. The cascade also carries
     `spent: Cost`, which `policy/loop.py` charges to each round — an un-metered
     cascade would make the physics tier look free and unfair in an equal-budget
-    comparison.
+    comparison. `materializer` is the port a DiT/CAD adapter replaces; `None` means
+    the cascade resolves T1's parametric builder itself.
     """
     module = _require(
         "pah.tools.verifiers.design_cascade", "the design-plane verifier cascade (T2)"
     )
     cls = getattr(module, "DesignVerifierCascade", None)
     if cls is not None:
-        return cls(registry, Path(root))
+        return cls(registry, Path(root), materializer=materializer)
     for name in ("build", "cascade"):
         factory = getattr(module, name, None)
         if callable(factory):
-            return factory(registry, Path(root))
+            return factory(registry, Path(root), materializer=materializer)
     raise RuntimeError(
         "the design-plane verifier cascade (T2) exposes no "
         "`DesignVerifierCascade(registry, root)` in pah.tools.verifiers.design_cascade"
@@ -545,6 +610,7 @@ class Runtime:
         policies: Mapping[str, Callable[..., Any]] | None = None,
         plugin_report: Any = None,
         notes: Sequence[str] = (),
+        generator_label: str = "local-parametric",
     ) -> None:
         self.cfg = cfg
         self.out = Path(cfg.out)
@@ -557,6 +623,9 @@ class Runtime:
         self.policies = dict(policies or {})
         self.plugin_report = plugin_report
         self.notes = list(notes)
+        #: Which generator produced the parts, stamped into the report. Defaults to
+        #: the parametric builder; `build()` overrides it when `[gen]` names another.
+        self.generator_label = generator_label
         self._policy_cache: dict[str, Any] = {}
 
     # -- lifecycle ---------------------------------------------------------
@@ -1026,6 +1095,11 @@ class Runtime:
                 "stop_after_round": self.cfg.stop_after_round,
                 "status": "stopped" if stopped else "completed",
                 "wall_s": round(wall_s, 3),
+                # Which generator produced the parts. Without this a report cannot
+                # tell a parametric run from one whose DiT adapter was configured
+                # but silently unused — the exact claim a generator swap must keep
+                # honest.
+                "generator": self.generator_label,
             },
             "ticket": {
                 "id": ticket.id,
@@ -1171,7 +1245,9 @@ def build(cfg: RuntimeConfig) -> Runtime:
     from pah import plugins  # noqa: PLC0415  (keeps this module importable without the plugin layer)
 
     out = Path(cfg.out)
-    resolve_materializer()
+    # Resolve the generator before anything touches disk: a configured DiT adapter
+    # that cannot import must fail here, with its own sentence, and never fall back.
+    materializer = resolve_generator(cfg.config_path)
     design_registry = resolve_design_registry()
     operators = resolve_operators()
 
@@ -1196,7 +1272,7 @@ def build(cfg: RuntimeConfig) -> Runtime:
     # The cascade materialises into `root/geometry`, so the directory has to exist
     # by the time it is constructed — but not before every neighbour resolved.
     out.mkdir(parents=True, exist_ok=True)
-    verifiers = resolve_cascade(design_registry, out)
+    verifiers = resolve_cascade(design_registry, out, materializer)
     if cfg.inject_fault == "verifier":
         # Fail the first post-repair verification, not the initial one: the episode
         # must have a round to mark as `error` before it recovers.
@@ -1223,4 +1299,5 @@ def build(cfg: RuntimeConfig) -> Runtime:
         policies=host.policies,
         plugin_report=plugin_report,
         notes=plugin_notes,
+        generator_label=configured_generator(cfg.config_path),
     )

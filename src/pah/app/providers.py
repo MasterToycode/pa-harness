@@ -40,13 +40,26 @@ __all__ = [
     "Transport",
     "Usage",
     "load_registry",
+    "resolve_python_target",
 ]
 
 #: How a provider charges. `per_token` is the only one with a price; the rest
 #: consume a quota, a subscription or nothing.
 Billing = Literal["per_token", "quota", "subscription", "free", "gpu_seconds", "per_call"]
 
-_KINDS = ("openai-compatible", "codex-oauth", "local-parametric", "http-repair")
+_KINDS = (
+    "openai-compatible",
+    "codex-oauth",
+    "local-parametric",
+    "http-repair",
+    # A local Python callable, imported by name. This is the door a DiT adapter
+    # walks through: `[gen.providers.dit] kind = "python"` plus
+    # `compat = { target = "my_module:materialize" }`. Kept in the same registry as
+    # the HTTP providers so a run's manifest can name *which* generator produced a
+    # part, and so "no silent fallback" applies to geometry exactly as it does to
+    # decisions.
+    "python",
+)
 
 #: `(url, headers, body_bytes) -> parsed JSON dict`. Injected so tests never
 #: reach the network and a caller can swap in a recording transport.
@@ -347,9 +360,123 @@ def build_client(
         return OpenAICompatible(config, transport=transport, environ=environ)
     if config.kind == "local-parametric":
         return NullLLM()
+    if config.kind == "python":
+        raise ProviderError(
+            f"provider {config.id!r} is a python generator, not a chat client; "
+            "resolve it with `resolve_python_target` instead"
+        )
     if config.kind == "codex-oauth":
         raise ProviderError(
             "codex-oauth is not wired yet: it reuses the subscription quota DSH keeps in "
             "credentials_file. Add it when the decision layer starts using a model."
         )
     raise ProviderError(f"kind {config.kind!r} has no client")
+
+
+def resolve_python_target(config: ProviderConfig) -> Callable[..., Any]:
+    """The callable an `[gen.providers.<id>] kind="python"` entry names.
+
+    `compat = { target = "package.module:function" }`. Two spellings are supported,
+    because a first integration and a released adapter are different situations:
+
+    * **an importable module** (`"my_dit.materialize:materialize"`, or dotted as
+      `"my_dit.materialize.materialize"`) — what a package you installed should use;
+    * **a file path** (`"examples/dit_materializer.py:stub_materialize"`) — what lets
+      you test an adapter from a checkout without packaging it, which is the whole
+      point of a first test.
+
+    Failures each get their own sentence, because this is the seam where a user's
+    adapter either works or does not:
+
+    * no target declared — a configuration mistake;
+    * the module/file will not import — usually a missing dependency of the adapter;
+    * the attribute is missing or not callable — usually a model object where a
+      function was expected.
+
+    Deliberately **not** a fallback: if a run asked for a DiT generator and the
+    adapter cannot load, the run must stop rather than quietly produce trimesh parts
+    while the report says a DiT generated them.
+    """
+    raw = str((config.compat or {}).get("target", "") or "").strip()
+    if not raw:
+        raise ProviderError(
+            f"gen provider {config.id!r} has kind 'python' but declares no "
+            "`compat.target`; write it as `compat = { target = \"module:function\" }`"
+        )
+    module_name, _, attribute = raw.partition(":")
+    if not attribute:  # accept "pkg.mod.func" by splitting on the last dot
+        module_name, _, attribute = raw.rpartition(".")
+    if not module_name or not attribute:
+        raise ProviderError(
+            f"gen provider {config.id!r} target {raw!r} is not 'module:function' or "
+            "'path/to/file.py:function'"
+        )
+
+    obj = (
+        _from_file(module_name, attribute, config)
+        if _looks_like_a_path(module_name)
+        else _from_module(module_name, attribute, config)
+    )
+    if not callable(obj):
+        raise ProviderError(
+            f"gen provider {config.id!r}: target {raw!r} is "
+            f"{type(obj).__name__}, not a callable `(spec, out_dir) -> MaterializedDesign`"
+        )
+    return obj
+
+
+def _looks_like_a_path(module: str) -> bool:
+    """A path, not a module name: `.py` suffix or a directory separator."""
+    return module.endswith(".py") or "/" in module or "\\" in module
+
+
+def _from_module(module_name: str, attribute: str, config: ProviderConfig) -> Any:
+    from importlib import import_module  # noqa: PLC0415
+
+    try:
+        module = import_module(module_name)
+    except Exception as error:  # noqa: BLE001 - the sentence is the product here
+        raise ProviderError(
+            f"gen provider {config.id!r}: cannot import {module_name!r}: "
+            f"{type(error).__name__}: {error}. Put the adapter on `sys.path` (install it "
+            "or set PYTHONPATH), or point `compat.target` at a file path instead."
+        ) from error
+    obj = getattr(module, attribute, None)
+    if obj is None:
+        raise ProviderError(
+            f"gen provider {config.id!r}: module {module_name!r} has no attribute "
+            f"{attribute!r}"
+        )
+    return obj
+
+
+def _from_file(path_str: str, attribute: str, config: ProviderConfig) -> Any:
+    """Load `attribute` from a .py file — the checkout-path spelling."""
+    from importlib.util import module_from_spec, spec_from_file_location  # noqa: PLC0415
+
+    path = Path(path_str).expanduser()
+    if not path.is_absolute():
+        path = (Path.cwd() / path).resolve()
+    if not path.exists():
+        raise ProviderError(
+            f"gen provider {config.id!r}: adapter file {path} does not exist "
+            "(relative paths are resolved against the current directory)"
+        )
+    name = f"pah_plugin_{abs(hash(str(path)))}"
+    spec = spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ProviderError(f"gen provider {config.id!r}: {path} is not importable as Python")
+    module = module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as error:  # noqa: BLE001 - the sentence is the product here
+        raise ProviderError(
+            f"gen provider {config.id!r}: adapter {path} raised on import: "
+            f"{type(error).__name__}: {error}"
+        ) from error
+    obj = getattr(module, attribute, None)
+    if obj is None:
+        raise ProviderError(
+            f"gen provider {config.id!r}: {path} has no attribute {attribute!r}"
+        )
+    return obj

@@ -11,7 +11,8 @@
     "inject_fault": null,
     "stop_after_round": null,
     "status": "completed",
-    "wall_s": 1.148
+    "wall_s": 1.159,
+    "generator": "local:local-parametric"
   },
   "ticket": {
     "id": "506b5887447c0687a3865386c44b4e24",

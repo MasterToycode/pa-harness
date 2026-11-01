@@ -316,8 +316,13 @@ def install(
     state: dict[str, Any] = {"materializer": materializer, "cascades": []}
     chosen = dict(policies or {})
 
-    def make_cascade(registry: Any, root: str | Path) -> BandCascade:
-        cascade = BandCascade(registry, root, mode=mode, materializer=materializer)
+    def make_cascade(registry: Any, root: str | Path, materializer_: Any = None) -> BandCascade:
+        # The runtime resolves the generator and hands it to the cascade; a test that
+        # pins its own still sees the same object, so the wiring is exercised rather
+        # than bypassed.
+        cascade = BandCascade(
+            registry, root, mode=mode, materializer=materializer_ or materializer
+        )
         state["cascades"].append(cascade)
         return cascade
 
@@ -327,6 +332,8 @@ def install(
         return ClearancePolicy(name=name)
 
     monkeypatch.setattr(runtime_module, "resolve_materializer", lambda: materializer)
+    monkeypatch.setattr(runtime_module, "resolve_generator", lambda *_a, **_k: materializer)
+    monkeypatch.setattr(runtime_module, "configured_generator", lambda *_a, **_k: "fake")
     monkeypatch.setattr(runtime_module, "resolve_design_registry", FakeDesignRegistry)
     monkeypatch.setattr(runtime_module, "resolve_cascade", make_cascade)
     monkeypatch.setattr(runtime_module, "resolve_operators", FakeOperators)
