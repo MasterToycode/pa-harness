@@ -1,0 +1,53 @@
+{
+  "spec_id": "demo-snap-fit",
+  "requirement": "A 4 mm cantilever hook with a 1 mm undercut should snap through a 4.2 mm slot in a 60x40x12 plate and catch under the 8 mm-deep chamber. No fastener, removable by lifting the beam.",
+  "parts": [
+    {
+      "id": "body",
+      "role": "body",
+      "size_mm": [60.0, 40.0, 12.0],
+      "pose_mm": [0.0, 0.0, 0.0],
+      "rot_deg": [0.0, 0.0, 0.0],
+      "material": "PLA"
+    },
+    {
+      "id": "insert",
+      "role": "insert",
+      "size_mm": [8.0, 8.0, 14.0],
+      "pose_mm": [0.0, 0.0, -3.0],
+      "rot_deg": [0.0, 0.0, 0.0],
+      "material": "PLA"
+    }
+  ],
+  "interfaces": [
+    {
+      "id": "iface_0",
+      "kind": "snap_fit",
+      "a": "body",
+      "b": "insert",
+      "params": {
+        "hook_w_mm": 4.0,
+        "hook_h_mm": 1.0,
+        "beam_len_mm": 12.0,
+        "beam_thk_mm": 1.6,
+        "slot_w_mm": 4.2,
+        "engage_mm": 8.0,
+        "approach_mm": 12.0
+      }
+    }
+  ],
+  "constraints": {
+    "min_clearance_mm": 0.1,
+    "max_clearance_mm": 0.6,
+    "min_wall_mm": 1.2,
+    "process": "fdm",
+    "target_fit": "slip"
+  },
+  "revision": 1,
+  "provenance": {
+    "interface_kind": "fixture:hand",
+    "params": "fixture:hand",
+    "why": "stock snap-fit numbers: 0.1 mm lateral play per side, 1 mm undercut"
+  },
+  "api_version": "1"
+}

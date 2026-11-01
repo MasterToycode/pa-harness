@@ -444,6 +444,8 @@ def assembly_from_spec(
     spec: DesignSpec,
     geometry_paths: dict[str, str] | None = None,
     geometry_hashes: dict[str, str] | None = None,
+    mate_axis: Vec3 | None = None,
+    approach_mm: float | None = None,
     parent: str | None = None,
     version: int = 1,
 ) -> Assembly:
@@ -459,6 +461,13 @@ def assembly_from_spec(
     hashes come from `geometry_hash`, paths stay empty until a materialiser fills
     them. `geom.path` being empty is the signal a cascade must materialise before
     it can show a verifier any triangles.
+
+    `mate_axis` / `approach_mm` are the insertion facts of the built geometry. A
+    materialiser passes what its builder reported, and they are stored on the
+    assembly so *every later consumer* — a cascade rebuilding a view, a report
+    explaining a repair — reads the same axis without rebuilding geometry. Omitted
+    by pure callers, which is why they are absent from the constraints rather than
+    filled with a default that would then look measured.
     """
     from pah.core.ids import key  # local import: keeps this module import-light
 
@@ -506,6 +515,8 @@ def assembly_from_spec(
             SPEC_SLOT: spec.model_dump(),
             "body_id": body_id,
             "insert_id": spec.insert.id,
+            **({"mate_axis": list(mate_axis)} if mate_axis is not None else {}),
+            **({"approach_mm": float(approach_mm)} if approach_mm is not None else {}),
         },
         parent=parent,
     )
@@ -533,16 +544,27 @@ def view_of(assembly: Assembly, root: str | Path | None = None) -> DesignView:
     `root` is only needed for an assembly whose part payloads lack `geom.path`
     (a hand-built fixture); a materialised assembly carries absolute paths, which
     is why the cascade adapter can take an `Assembly` alone.
+
+    The insertion facts come back from the assembly's own constraints when a
+    materialiser recorded them. That is what keeps a cascade from silently
+    falling back to +Z for a dovetail, which slides along +X: a rebuilt view would
+    otherwise describe the right solids with the wrong approach direction, and the
+    path verifier would call a working slide-joint blocked.
     """
     paths = {
         str(part.get("id")): str((part.get("geom") or {}).get("path"))
         for part in assembly.parts
         if (part.get("geom") or {}).get("path")
     }
+    constraints = assembly.constraints or {}
+    axis = constraints.get("mate_axis")
+    approach = constraints.get("approach_mm")
     return DesignView(
         spec=spec_of(assembly),
         root=Path(root) if root is not None else None,
         paths=paths,
+        mate_axis=tuple(float(x) for x in axis) if axis else (0.0, 0.0, 1.0),
+        approach_mm=float(approach) if approach is not None else 6.0,
     )
 
 
