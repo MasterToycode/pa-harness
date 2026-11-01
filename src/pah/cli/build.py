@@ -93,6 +93,20 @@ def execute(
         else:
             note(f"no LLM choice ({provenance}); keeping deterministic params")
 
+    # Declare a build orientation, so the manufacturing checks actually run. (0,0,0)
+    # means "print the part as modelled": the plate flat on the bed, the insert standing
+    # on its end face. Without a declared orientation the overhang rule is not
+    # evaluated at all — and a report that skips it cannot answer "can I print this?".
+    spec = spec.edit(
+        constraints=spec.constraints.model_copy(
+            update={"print_orientation_deg": (0.0, 0.0, 0.0)}
+        ),
+        provenance={
+            **spec.provenance,
+            "print_orientation": "declared (0,0,0) = print as modelled",
+        },
+    )
+
     spec_path = target / "spec.json"
     spec_path.write_text(
         json.dumps(spec.model_dump(), ensure_ascii=False, indent=1) + "\n", "utf-8"
@@ -255,6 +269,16 @@ def _print_artifacts(result: dict) -> None:
     print()
     print(f"  generator {result['generator']}   verdict {result['verdict']}   "
           f"rounds {result['rounds']}   {result['elapsed_s']}s")
+    verdicts = result["report"].get("verdicts", {})
+    if verdicts:
+        assembly = verdicts.get("assemblable", {})
+        printable = verdicts.get("printable", {})
+        print(f"  可装配   {'是' if assembly.get('ok') else '否'}  "
+              f"({assembly.get('validated')}; 阻断={assembly.get('blocking') or '无'}; "
+              f"未评估={assembly.get('not_evaluated') or '无'})")
+        print(f"  可打印   {'是' if printable.get('ok') else '否'}  "
+              f"({printable.get('validated')}; 阻断={printable.get('blocking') or '无'}; "
+              f"水密={printable.get('watertight')})")
     for note in result["notes"]:
         print(f"  未评估 · {note[:120]}")
     print()

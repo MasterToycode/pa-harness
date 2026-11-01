@@ -1200,6 +1200,7 @@ class Runtime:
                 "disabled": disabled,
                 "notes": verifier_notes,
             },
+            "verdicts": _verdicts(certificates, verifier_notes, self.out / "geometry"),
             "trace": {
                 "path": str(self.trace.path),
                 "rows": len(self.trace.rows(skip_corrupt=True)),
@@ -1232,6 +1233,87 @@ class Runtime:
 # --------------------------------------------------------------------------- #
 # Building one
 # --------------------------------------------------------------------------- #
+#: Codes that stop a part from being assembled. A physical failure in this set means
+#: the design as verified cannot be put together, whatever else passed.
+ASSEMBLY_BLOCKING_CODES = frozenset(
+    {
+        "insufficient_material",
+        "excess_material",
+        "insufficient_clearance",
+        "excessive_clearance",
+        "geometric_interference",
+        "insertion_path_blocked",
+        "joint_unstable",
+        "dynamic_penetration",
+    }
+)
+
+#: Codes that stop a part from being manufactured. Kept separate from assembly: a part
+#: can be assemblable and unprintable, and the two claims have different owners.
+PRINT_BLOCKING_CODES = frozenset(
+    {"below_min_wall", "unsupported_overhang", "insufficient_material"}
+)
+
+#: Verifiers whose absence weakens which claim. Used to say *what was not checked*.
+ASSEMBLY_VERIFIERS = ("fit_clearance", "insert_material", "interface_interference",
+                      "insertion_path", "physics_settle")
+PRINT_VERIFIERS = ("printability", "insert_material")
+
+
+def _verdicts(
+    certificates: Sequence[FailureCertificate],
+    notes: Mapping[str, str],
+    geometry_dir: Path,
+) -> dict[str, Any]:
+    """The two questions a user actually asks, answered without overclaiming.
+
+    `ok` is true only when no check in that family **proved** a defect. `not_evaluated`
+    lists the checks that did not run (a verifier that reported a capability boundary),
+    because "we did not look" and "we looked and it is fine" must never read the same.
+    A watertightness check on the exported STLs is included for printability: the file
+    that goes to the slicer is the thing that has to be closed, not the in-memory mesh.
+    """
+    codes = sorted({cert.code for cert in certificates if cert.family != "environment"})
+    assembly_blocking = sorted(set(codes) & ASSEMBLY_BLOCKING_CODES)
+    print_blocking = sorted(set(codes) & PRINT_BLOCKING_CODES)
+
+    watertight: dict[str, bool] = {}
+    for path in sorted(geometry_dir.glob("*.stl")):
+        try:
+            import trimesh  # noqa: PLC0415 - only the report needs it
+
+            watertight[path.stem] = bool(trimesh.load(path, force="mesh").is_watertight)
+        except Exception:  # noqa: BLE001 - an unreadable file is a not-a-pass
+            watertight[path.stem] = False
+    closed = bool(watertight) and all(watertight.values())
+
+    assembly_missing = sorted(v for v in ASSEMBLY_VERIFIERS if v in notes)
+    print_missing = sorted(v for v in PRINT_VERIFIERS if v in notes)
+
+    return {
+        "assemblable": {
+            "ok": not assembly_blocking,
+            "blocking": assembly_blocking,
+            "not_evaluated": assembly_missing,
+            # Verification is only complete when the expensive tier ran too; otherwise
+            # the claim is "no geometric reason it cannot assemble", not "proven".
+            "validated": "full" if not assembly_missing else "partial",
+        },
+        "printable": {
+            "ok": not print_blocking and closed,
+            "blocking": print_blocking,
+            "not_evaluated": print_missing,
+            "watertight": watertight,
+            "validated": "full" if not print_missing and closed else "partial",
+        },
+        "meaning": (
+            "ok=false means a registered check proved a defect; 'not_evaluated' means "
+            "that check did not run. Neither list is a pass claim, and the two are "
+            "never added together."
+        ),
+    }
+
+
 def build(cfg: RuntimeConfig) -> Runtime:
     """Compose a runtime for `cfg.out`.
 

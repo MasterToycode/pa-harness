@@ -34,7 +34,7 @@ pah preview runs/build-<时间戳>        # 只重新出图
 | `preview.png` | 四视图渲染（等距/前/侧/顶），直接打开看 |
 | `preview.html` | 单文件 3D 浏览器，双击即可旋转缩放（STL 已内嵌，离线可用） |
 | `geometry/body.stl`、`geometry/insert.stl` | **你的零件**，可直接进切片软件 |
-| `report.json` | 判定、每轮动作、成本、验证器说明（未评估项单列） |
+| `report.json` | 判定、每轮动作、成本、**可装配/可打印**结论 + 未评估项 |
 | `trace.jsonl` | 逐事件轨迹（可复现、可恢复） |
 | `spec.json` | 这次用的设计意图（改它再跑一次即可） |
 
@@ -111,13 +111,14 @@ src/pah/
 | 等预算对比（4 个故意做坏的设计） | rule **4/4**、1.00 轮；random **2/4**、2.25 轮 |
 | P0 六条判据 | `python scripts/acceptance.py` **6/6** |
 | 混元 3D 真生成 | Ø9.70 mm 销、水密 64k 面、裁到 14 mm 包络、就位误差 0 |
+| 生成件形态验收 | `insert_material`：实测体积/设计体积 = 0.286 → 判 `insufficient_material`（空壳销）；旧版会误判 repaired |
 | 测试 | **670 passed** |
 
 口径纪律：`repaired_by_policy`、`environment_errors`、`not_evaluated`（能力边界）三列**永不合并**；`not_evaluated` 不等于通过。
 
 ## 下一步（未做，不是遗漏）
 
-1. 生成件形态验收：当前验证器判接口参数与碰撞，**不判「销里有没有材料」**（混元给的销是中空壳，体积 163 vs 设计 1033）。计划加 `insert_material` 验证器。
+1. 生成件形态验收：已加 `insert_material`（体积比 0.55–1.8），中空销会被判 `insufficient_material`；下一步是在**导出文件**上再判壁厚/悬垂（当前在内存网格上判）。
 2. 评测集扩充：现在是 dev 集，正式结论要独立测试集。
 3. DiT/CAD 适配器：`Materializer` 端口已留，混元是第一个可用实例。
 4. case memory 落账：`policy.flush(ticket.rounds)` 未接，pass 轮不进记忆。

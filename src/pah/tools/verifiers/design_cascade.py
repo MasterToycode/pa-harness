@@ -80,6 +80,11 @@ def default_registry() -> DesignVerifierRegistry:
     """
     registry = DesignVerifierRegistry()
     registry.register(FitClearance())
+    # Material before surfaces: a hollow shell has a perfect outer surface, so every
+    # verifier below this one would agree that it fits.
+    from pah.tools.verifiers.insert_material import InsertMaterial  # noqa: PLC0415
+
+    registry.register(InsertMaterial())
     registry.register(InterfaceInterference())
     registry.register(InsertionPath())
     registry.register(Printability())

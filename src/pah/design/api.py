@@ -47,9 +47,11 @@ __all__ = [
     "CODE_BELOW_MIN_WALL",
     "CODE_DYNAMIC_PENETRATION",
     "CODE_EXCESSIVE_CLEARANCE",
+    "CODE_EXCESS_MATERIAL",
     "CODE_GEOMETRIC_INTERFERENCE",
     "CODE_INSERTION_PATH_BLOCKED",
     "CODE_INSUFFICIENT_CLEARANCE",
+    "CODE_INSUFFICIENT_MATERIAL",
     "CODE_JOINT_UNSTABLE",
     "CODE_PHYSICS_ERROR",
     "CODE_UNSUPPORTED_OVERHANG",
@@ -72,6 +74,8 @@ __all__ = [
 # --------------------------------------------------------------------------- #
 CODE_INSUFFICIENT_CLEARANCE = "insufficient_clearance"
 CODE_EXCESSIVE_CLEARANCE = "excessive_clearance"
+CODE_INSUFFICIENT_MATERIAL = "insufficient_material"
+CODE_EXCESS_MATERIAL = "excess_material"
 CODE_GEOMETRIC_INTERFERENCE = "geometric_interference"
 CODE_INSERTION_PATH_BLOCKED = "insertion_path_blocked"
 CODE_BELOW_MIN_WALL = "below_min_wall"
@@ -86,6 +90,10 @@ CODE_PHYSICS_ERROR = "physics_error"
 #: a report starts double-counting evidence.
 DESIGN_CODES: dict[str, tuple[str, ...]] = {
     "fit_clearance": (CODE_INSUFFICIENT_CLEARANCE, CODE_EXCESSIVE_CLEARANCE),
+    # Second because it is cheap (one parametric rebuild) and because "there is no
+    # material in the part" outranks any surface-level judgement: a hollow shell has a
+    # perfect outer surface, so every later verifier agrees with it.
+    "insert_material": (CODE_INSUFFICIENT_MATERIAL, CODE_EXCESS_MATERIAL),
     "interface_interference": (CODE_GEOMETRIC_INTERFERENCE,),
     "insertion_path": (CODE_INSERTION_PATH_BLOCKED,),
     "printability": (CODE_BELOW_MIN_WALL, CODE_UNSUPPORTED_OVERHANG),

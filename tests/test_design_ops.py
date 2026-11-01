@@ -725,6 +725,8 @@ def test_hard_codes_are_the_design_codes_minus_the_environment_one():
     assert set(HARD_CODES) == {
         "insufficient_clearance",
         "excessive_clearance",
+        "insufficient_material",
+        "excess_material",
         "geometric_interference",
         "insertion_path_blocked",
         "below_min_wall",
