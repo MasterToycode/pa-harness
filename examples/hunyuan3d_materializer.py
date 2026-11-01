@@ -56,9 +56,43 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO / "src") not in sys.path:
     sys.path.insert(0, str(REPO / "src"))
 
+from pah.app.env import load_env_file  # noqa: E402
 from pah.design.api import MaterializedDesign, assembly_from_spec  # noqa: E402
 from pah.design.connectors import builder_for  # noqa: E402
 from pah.design.spec import DesignSpec  # noqa: E402
+
+# A bare `python examples/...py` does not go through `pah`'s entry point, so it has to
+# load `.env` itself or `--check` would report "keys not set" while `pah run` works.
+# Filling only missing variables means an explicit shell export still wins.
+load_env_file(REPO / ".env")
+
+
+def _bypass_proxy_for_service() -> None:
+    """Keep Tencent Cloud off this machine's dev proxy.
+
+    `HTTPS_PROXY` is set globally here (127.0.0.1:7890, a foreign-network proxy) and
+    its `NO_PROXY` only lists DeepSeek. Tencent's endpoint is domestic, so proxying it
+    makes the TLS connection reset (`ConnectionResetError 10054`) before any request
+    is signed — which looks like a credential problem and is not one. This appends the
+    service's domains to `NO_PROXY` for **this process only**: an explicit proxy for
+    those hosts still wins if you set one, because the list is only extended.
+
+    Applies to the download host as well: generated files come from COS
+    (`myqcloud.com`), and a proxied download fails the same way.
+    """
+    hosts = ("tencentcloudapi.com", "tencentcloud.com", "myqcloud.com")
+    current = os.environ.get("NO_PROXY") or os.environ.get("no_proxy") or ""
+    entries = [part.strip() for part in current.split(",") if part.strip()]
+    for host in hosts:
+        for pattern in (host, f"*.{host}"):
+            if pattern not in entries:
+                entries.append(pattern)
+    joined = ",".join(entries)
+    os.environ["NO_PROXY"] = joined
+    os.environ["no_proxy"] = joined
+
+
+_bypass_proxy_for_service()
 
 SECRET_ID_ENV = "TENCENTCLOUD_SECRET_ID"
 SECRET_KEY_ENV = "TENCENTCLOUD_SECRET_KEY"
@@ -269,13 +303,30 @@ def _generate(prompt: str, *, image_url: str | None = None) -> trimesh.Trimesh:
 
 
 def _call(client, action: str, payload: dict) -> dict:
-    """One signed JSON call, with the SDK's typed request/response kept at the edge."""
+    """One signed JSON call, with the SDK's typed request/response kept at the edge.
+
+    SDK failures are re-raised as one sentence. The first failure this adapter ever
+    hit was a reset connection caused by a local proxy — reported by the SDK as
+    `ClientNetworkError`, which reads like a credential problem and wastes an hour.
+    """
     import importlib  # noqa: PLC0415
 
     module = importlib.import_module("tencentcloud.ai3d.v20250513.models")
     request = getattr(module, f"{action}Request")()
     request.from_json_string(json.dumps(payload))
-    response = getattr(client, action)(request)
+    try:
+        response = getattr(client, action)(request)
+    except Exception as error:  # noqa: BLE001 - the sentence is the product here
+        code = str(getattr(error, "code", "") or type(error).__name__)
+        message = str(getattr(error, "message", "") or error)
+        hint = ""
+        if "Network" in code or "Reset" in message or "10054" in message:
+            hint = (
+                " 网络层失败：这台机器设了 HTTPS_PROXY，腾讯云域名必须绕过它。"
+                "适配器已对腾讯云域名自动绕过；若仍失败，检查代理/防火墙，"
+                "或把 *.tencentcloudapi.com,*.myqcloud.com 加进 NO_PROXY。"
+            )
+        raise RuntimeError(f"hunyuan3d {action} 调用失败 [{code}]: {message}.{hint}") from error
     return json.loads(response.to_json_string())
 
 

@@ -56,9 +56,14 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO / "src") not in sys.path:  # works from a checkout without `pip install -e .`
     sys.path.insert(0, str(REPO / "src"))
 
+from pah.app.env import load_env_file  # noqa: E402
 from pah.design.api import MaterializedDesign, assembly_from_spec  # noqa: E402
 from pah.design.connectors import builder_for  # noqa: E402
 from pah.design.spec import DesignSpec  # noqa: E402
+
+# A bare `python examples/...py` does not go through `pah`'s entry point, so it loads
+# `.env` itself; missing-only means an explicit shell export still wins.
+load_env_file(REPO / ".env")
 
 #: Where your model lives. Read at call time, never at import: a rotation of the
 #: endpoint or a moved checkpoint must not need a code change.

@@ -1,0 +1,161 @@
+{
+  "schema": "pah-run-report/1",
+  "plane": "design",
+  "dataset_runs_touched": [],
+  "run": {
+    "out": "runs\\prompt-test\\ep",
+    "policy": "llm",
+    "rounds_requested": 3,
+    "resume": false,
+    "seed": 0,
+    "inject_fault": null,
+    "stop_after_round": null,
+    "status": "completed",
+    "wall_s": 1.526,
+    "generator": "local:local-parametric"
+  },
+  "ticket": {
+    "id": "b661d2902f58dce736a7f2761c93d58a",
+    "outcome": "repaired",
+    "reason": "verified after repair"
+  },
+  "episode": {
+    "verdict": "repaired",
+    "reason": "verified after repair",
+    "rounds": 1
+  },
+  "budget": {
+    "rounds": {
+      "budget": 3,
+      "used": 1,
+      "left": 2
+    },
+    "geom_calls": {
+      "budget": 24,
+      "charged": 11,
+      "left": 13
+    },
+    "sim_calls": {
+      "budget": 12,
+      "charged": 2,
+      "left": 10
+    },
+    "verifier_spend": {
+      "geom_calls": 10,
+      "sim_calls": 2
+    },
+    "rounds_produced": 1,
+    "rounds_without_design": 0
+  },
+  "design": {
+    "spec_id": "design-peg_hole",
+    "kind": "peg_hole",
+    "requirement": "a 3D-printable bracket joint: a chamfered pin with a flat handle slides into a blind socket, target clearance 0.2 mm",
+    "initial_content_key": "sha256:c8fe524709a77ca272543bfcfc8754a2",
+    "final_content_key": "sha256:1d99e6be635a0b735077c8fd85ad977f",
+    "initial_clearance_mm": 0.1,
+    "final_clearance_mm": 0.35,
+    "final_revision": 2,
+    "provenance": {
+      "via": "pah design new",
+      "kind": "cli:peg_hole",
+      "parts": "deterministic-defaults",
+      "pose": "builder:peg_hole.seated_pose_mm",
+      "constraints": "deterministic-defaults",
+      "params": "deterministic-defaults"
+    },
+    "fit_band_mm": [
+      0.1,
+      0.6
+    ]
+  },
+  "rounds": [
+    {
+      "index": 0,
+      "operator": "set_clearance",
+      "params": {
+        "clearance_mm": 0.35,
+        "interface_id": "iface_0",
+        "parts": [
+          "body",
+          "insert"
+        ]
+      },
+      "proposed_by": "llm",
+      "reason": "insufficient_clearance: measured 0.1 mm sits at the band edge; move to the middle of the [0.1, 0.6] band.",
+      "verdict": "pass",
+      "stage": "judged",
+      "codes": [],
+      "environment_errors": 0,
+      "geom_calls": 11,
+      "sim_calls": 2,
+      "llm_calls": 1,
+      "tokens": 2818,
+      "geom_hash": "4ed499b9284e332616a571c0add85fc2"
+    }
+  ],
+  "llm": {
+    "calls": 1,
+    "tokens": 2818,
+    "billing_note": "calls and tokens are the comparison unit; money is provider-declared"
+  },
+  "counts": {
+    "repaired_by_policy": 1,
+    "physical_failures_final": 0,
+    "final_codes": [],
+    "environment_errors": 0,
+    "verifier_error_events": 0,
+    "unknown": 0,
+    "error_rounds": [],
+    "not_evaluated": 1,
+    "not_evaluated_by": [
+      "printability"
+    ]
+  },
+  "verifiers": {
+    "enabled": [
+      "fit_clearance",
+      "interface_interference",
+      "insertion_path",
+      "printability",
+      "physics_settle"
+    ],
+    "disabled": {},
+    "notes": {
+      "printability": "overhang not evaluated: the spec declares no print_orientation_deg, so there is no build direction to judge"
+    }
+  },
+  "trace": {
+    "path": "runs\\prompt-test\\ep\\trace.jsonl",
+    "rows": 7,
+    "replay_hashes": [
+      "4ed499b9284e332616a571c0add85fc2"
+    ]
+  },
+  "geometry": {
+    "dir": "runs\\prompt-test\\ep\\geometry",
+    "files": [
+      "body.stl",
+      "insert.stl"
+    ],
+    "parts": {
+      "body": {
+        "path": "runs\\prompt-test\\ep\\geometry\\body.stl",
+        "hash": "sha256:8a00566ee3467cf53cbc9cfecc8797fa",
+        "exists": true
+      },
+      "insert": {
+        "path": "runs\\prompt-test\\ep\\geometry\\insert.stl",
+        "hash": "sha256:709cf3e3ea6dfeee64a4dc095d8b936c",
+        "exists": true
+      }
+    },
+    "complete": true
+  },
+  "plugins": {
+    "loaded": 19,
+    "failed": [],
+    "warnings": []
+  },
+  "notes": []
+}
