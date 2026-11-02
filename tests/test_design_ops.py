@@ -729,6 +729,9 @@ def test_hard_codes_are_the_design_codes_minus_the_environment_one():
         "excess_material",
         "geometric_interference",
         "insertion_path_blocked",
+        # Global assembly: two parts that share no interface can still collide, and
+        # only the whole-assembly pass sees it.
+        "global_interference",
         "below_min_wall",
         "unsupported_overhang",
         "joint_unstable",

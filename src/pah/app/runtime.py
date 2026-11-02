@@ -1208,7 +1208,15 @@ class Runtime:
                 "disabled": disabled,
                 "notes": verifier_notes,
             },
-            "verdicts": _verdicts(certificates, verifier_notes, self.out / "geometry"),
+            "verdicts": _verdicts(
+                certificates,
+                verifier_notes,
+                self.out / "geometry",
+                sequence=getattr(self.verifiers, "sequence", None),
+            ),
+            "assembly": _assembly_block(
+                certificates, getattr(self.verifiers, "sequence", None)
+            ),
             "trace": {
                 "path": str(self.trace.path),
                 "rows": len(self.trace.rows(skip_corrupt=True)),
@@ -1329,10 +1337,49 @@ def verdict_text(entry: Mapping[str, Any] | None) -> str:
     return "是" if entry.get("ok") else "否"
 
 
+def _assembly_block(certificates: Sequence[FailureCertificate], sequence: Any) -> dict:
+    """The N-part assembly's two extra facts: no unseen collision, and an order.
+
+    `global_ok` answers "did anything collide that no interface covers" — the blind
+    spot the audit found (two parts that share no interface never appear in one
+    two-part shadow). `sequence_found` answers a *different* question: "can it be
+    taken apart one straight pull at a time". They are reported apart because they
+    fail apart: parts can be collision-free and still impossible to assemble, which is
+    exactly the case the box-in-a-box fixture demonstrates.
+
+    `sequence_found: null` means no search was run (fewer than three parts, where the
+    single joint's `insertion_path` check is the same statement). Never confuse it
+    with `False`, which means the search ran and did not find one — and even that is
+    "we could not show it", not "impossible".
+    """
+    global_hits = sorted(
+        {cert.code for cert in certificates if cert.code == "global_interference"}
+    )
+    block = {
+        "global_ok": not global_hits,
+        "global_blocking": global_hits,
+        "sequence_attempted": sequence is not None,
+        "sequence_found": None if sequence is None else bool(sequence.found),
+        "sequence": None,
+        "reason": (
+            "no disassembly search was run: a two-part assembly's single joint is "
+            "already covered by insertion_path"
+            if sequence is None
+            else str(sequence.reason)
+        ),
+    }
+    if sequence is not None:
+        block["sequence"] = list(sequence.assembly_order)
+        block["attempts"] = int(sequence.attempts)
+        block["blocked_at"] = sequence.blocked_at
+    return block
+
+
 def _verdicts(
     certificates: Sequence[FailureCertificate],
     notes: Mapping[str, str],
     geometry_dir: Path,
+    sequence: Any = None,
 ) -> dict[str, Any]:
     """The two questions a user actually asks, answered without overclaiming.
 
@@ -1372,6 +1419,11 @@ def _verdicts(
 
     assembly_missing = _did_not_run(ASSEMBLY_VERIFIERS, notes)
     print_missing = _did_not_run(PRINT_VERIFIERS, notes)
+    # "An order exists" is a separate claim from "nothing collides", so a search that
+    # ran and found nothing downgrades the assembly claim to partial rather than
+    # pretending the verifiers covered it (audit P1-1).
+    if sequence is not None and not getattr(sequence, "found", True):
+        assembly_missing = sorted(set(assembly_missing) | {"assembly_sequence"})
 
     def state(blocking: list[str], missing: list[str], closed_ok: bool = True) -> dict:
         proven_clean = not blocking and closed_ok

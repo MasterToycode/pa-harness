@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -98,6 +99,12 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     decompose.add_argument(
         "--no-verify", action="store_true", help="build only; skip the verifier cascade"
     )
+    decompose.add_argument(
+        "--allow-paid-gen",
+        dest="allow_paid_gen",
+        action="store_true",
+        help="authorise --decomposer xpart, which spends 腾讯云 credits",
+    )
     decompose.add_argument("--json", action="store_true", help="print the report as JSON")
     decompose.set_defaults(handler=_decompose)
 
@@ -158,6 +165,33 @@ def _run_decomposer(kind: str, whole, args):
     )
 
 
+def _paid_decomposer(kind: str) -> dict | None:
+    """The report fields for a paid decomposer, or `None` for the free ones.
+
+    `--decomposer xpart` is the one value that calls 腾讯云's 组件生成 API, so it is
+    declared to the same gate the generator providers use: a billing unit plus the
+    vendor adapter's `examples/` path. `--allow-paid-gen` is the only thing that opens
+    it; the cost warning in `_run_decomposer` stays as context, but this command now
+    refuses instead of leaving the caller to read a warning and press on.
+    """
+    if kind != "xpart":
+        return None
+    from pah.app.providers import ProviderConfig, require_paid_generation  # noqa: PLC0415
+
+    config = ProviderConfig(
+        id="xpart",
+        kind="python",
+        billing="per_call",
+        compat={"target": "examples/xpart_decomposer.py:XPartDecomposer"},
+    )
+    require_paid_generation(config, action="pah decompose --decomposer xpart")
+    return {
+        "paid_generation": True,
+        "provider": f"{config.id}:{config.kind}",
+        "billing": config.billing,
+    }
+
+
 def _largest_assembly(parts, interfaces):
     """The biggest connected group of pieces, plus what it left behind.
 
@@ -207,6 +241,18 @@ def _largest_assembly(parts, interfaces):
 
 
 def _decompose(args: argparse.Namespace) -> int:
+    from pah.app.providers import PAID_GENERATION_VAR, PaidGenerationRefused  # noqa: PLC0415
+
+    if args.allow_paid_gen:
+        # Set before the decomposer is chosen, so the same process-wide authorisation
+        # covers `--decomposer xpart` and anything it resolves downstream.
+        os.environ[PAID_GENERATION_VAR] = "1"
+    try:
+        paid = _paid_decomposer(args.decomposer)
+    except PaidGenerationRefused as error:
+        print(f"pah decompose: {error}")
+        return EXIT_CRASH
+
     import trimesh  # noqa: PLC0415
 
     from pah.design.decompose import (  # noqa: PLC0415
@@ -289,6 +335,7 @@ def _decompose(args: argparse.Namespace) -> int:
     certificates: list = []
     notes: dict[str, str] = {}
     cost = None
+    sequence = None
     if not args.no_verify:
         from pah.tools.verifiers.design_cascade import (  # noqa: PLC0415
             DesignVerifierCascade,
@@ -299,6 +346,7 @@ def _decompose(args: argparse.Namespace) -> int:
         certificates = cascade.check(design.assembly)
         notes = cascade.notes
         cost = cascade.spent
+        sequence = cascade.sequence
     else:
         # `--no-verify` must not read as "everything passed". Every registered check
         # is recorded as not run, so the verdicts say `partial` with the full list.
@@ -309,9 +357,9 @@ def _decompose(args: argparse.Namespace) -> int:
             for verifier_id in default_registry().ids()
         }
 
-    from pah.app.runtime import _verdicts, verdict_text  # noqa: PLC0415
+    from pah.app.runtime import _assembly_block, _verdicts, verdict_text  # noqa: PLC0415
 
-    verdicts = _verdicts(certificates, notes, out / "geometry")
+    verdicts = _verdicts(certificates, notes, out / "geometry", sequence=sequence)
 
     part_rows = {}
     for part in spec.parts:
@@ -340,6 +388,9 @@ def _decompose(args: argparse.Namespace) -> int:
             "interfaces": len(spec.interfaces),
             "clearance_mm": args.clearance,
             "verified": not args.no_verify,
+            # Present only when a paid decomposer was authorised: the report is where
+            # a later reader finds out whether this job spent 腾讯云 credits.
+            **(paid or {}),
         },
         "parts": part_rows,
         "interfaces": [
@@ -365,6 +416,7 @@ def _decompose(args: argparse.Namespace) -> int:
             for certificate in certificates
         ],
         "notes": notes,
+        "assembly": _assembly_block(certificates, sequence),
         "verdicts": verdicts,
         "cost": None
         if cost is None
@@ -401,6 +453,9 @@ def _print(report: dict, manifest: dict, out: Path) -> None:
     run = report["run"]
     print(f"pah decompose · {run['parts']} parts / {run['interfaces']} interfaces · {run['seconds']}s")
     print(f"  source {run['source_mesh']}  ({run['decomposer'].get('method')}, axis {run['decomposer'].get('axis')})")
+    if run.get("paid_generation"):
+        print(f"  paid gen {run['paid_provider']}  billing={run.get('paid_billing')}"
+              f"  (authorised with --allow-paid-gen)")
     for part_id, row in report["parts"].items():
         print(
             f"    {part_id:10s} {row['volume_mm3']:9.2f} mm3  "

@@ -96,6 +96,9 @@ DESIGN_CODES: dict[str, tuple[str, ...]] = {
     "insert_material": (CODE_INSUFFICIENT_MATERIAL, CODE_EXCESS_MATERIAL),
     "interface_interference": (CODE_GEOMETRIC_INTERFERENCE,),
     "insertion_path": (CODE_INSERTION_PATH_BLOCKED,),
+    # Global assembly, not a pair: two parts that share no interface can still
+    # occupy the same space, and only a whole-assembly pass can see that.
+    "global_interference": ("global_interference",),
     "printability": (CODE_BELOW_MIN_WALL, CODE_UNSUPPORTED_OVERHANG),
     "physics_settle": (CODE_JOINT_UNSTABLE, CODE_DYNAMIC_PENETRATION, CODE_PHYSICS_ERROR),
 }

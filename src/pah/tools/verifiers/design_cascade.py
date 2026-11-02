@@ -108,6 +108,11 @@ def default_registry() -> DesignVerifierRegistry:
     registry.register(InsertMaterial())
     registry.register(InterfaceInterference())
     registry.register(InsertionPath())
+    # Whole-assembly pass: the per-pair shadows cannot see two parts that share
+    # no interface, and that is exactly the collision a decomposition produces.
+    from pah.tools.verifiers.global_interference import GlobalInterference  # noqa: PLC0415
+
+    registry.register(GlobalInterference())
     registry.register(Printability())
     physics = _optional_physics_settle()
     if physics is not None:
@@ -167,6 +172,11 @@ class DesignVerifierCascade:
         self._designs: dict[str, MaterializedDesign] = {}
         self._spent = Cost()
         self._notes: dict[str, str] = {}
+        #: The last disassembly search, or `None` when the assembly was too small to
+        #: need one (two parts are covered by `insertion_path`). The report reads it
+        #: to say whether an order was found, which is a different claim from
+        #: "nothing collides".
+        self._sequence = None
 
     # -- the meter ---------------------------------------------------------
     @property
@@ -181,6 +191,16 @@ class DesignVerifierCascade:
         `geom_calls`/`sim_calls`.
         """
         return self._spent
+
+    @property
+    def sequence(self):
+        """The last disassembly search (`SequenceResult`), or `None`.
+
+        Kept beside `notes` rather than folded into them: a *found* order is a
+        positive fact the report has to print, and `notes` only carries what could
+        not be evaluated.
+        """
+        return self._sequence
 
     @property
     def notes(self) -> dict[str, str]:
@@ -228,7 +248,12 @@ class DesignVerifierCascade:
 
         certificates: list[FailureCertificate] = []
         notes: dict[str, str] = {}
-        self._run_registry(view, certificates, notes)
+        # A two-part assembly has exactly one pair, and `interface_interference`
+        # already boolean-tests exactly those two solids at the same noise floor. The
+        # whole-assembly pass would re-report that one pair with a second code, so it
+        # is skipped here — silently, because writing "not evaluated" would be false:
+        # the check *was* done, by the verifier that owns the pair.
+        self._run_registry(view, certificates, notes, silent_skip={"global_interference"})
         self._notes = notes
         return certificates
 
@@ -247,11 +272,64 @@ class DesignVerifierCascade:
         notes: dict[str, str] = {}
         for interface in spec.interfaces:
             pair = pair_view(design, interface.id)
+            # The shadow holds two parts, so a global pass inside it would be both a
+            # duplicate of the adjacent pair and *blind* to the pairs that matter:
+            # two parts that share no interface never appear in one shadow together.
             self._run_registry(
-                pair.view, certificates, notes, tag=interface.id, skip=_PAIR_SKIPS
+                pair.view,
+                certificates,
+                notes,
+                tag=interface.id,
+                skip=_PAIR_SKIPS,
+                silent_skip={"global_interference"},
             )
+
+        # The whole assembly, once. This is the pass the audit asked for: every pair,
+        # including the ones no interface connects.
+        whole = DesignView(
+            spec=spec,
+            root=design.root,
+            meshes=dict(design.meshes),
+            paths=dict(design.paths),
+        )
+        self._run_registry(
+            whole,
+            certificates,
+            notes,
+            only={"global_interference"},
+            skip=_PAIR_SKIPS,
+        )
+        self._check_sequence(spec, design, certificates, notes)
         self._notes = notes
         return certificates
+
+    def _check_sequence(self, spec, design, certificates, notes) -> None:
+        """Can the assembly actually be taken apart one straight pull at a time?
+
+        A `found=False` result is a **heuristic** failure, not a physical one: the
+        search only tries straight-line pulls, so "no order found" is "we could not
+        show it", never "impossible". It therefore lands in `notes` (which the report
+        renders as not-evaluated) rather than as a blocking certificate — the audit's
+        requirement for P1-1, and the same three-state discipline the rest of the
+        harness uses.
+
+        Two parts are skipped: the single joint's own `insertion_path` check is the
+        same statement, measured on the actual pair, and inventing a second answer for
+        it would only give the report two ways to disagree.
+        """
+        self._sequence = None
+        if len(spec.parts) < 3:
+            return
+        from pah.design.assembly_sequence import find_sequence  # noqa: PLC0415
+
+        try:
+            result = find_sequence(spec, design.meshes)
+        except Exception as error:  # noqa: BLE001 - fail closed, like the verifiers
+            certificates.append(self._environment(design.assembly, error))
+            return
+        self._sequence = result
+        if not result.found:
+            notes["assembly_sequence"] = result.reason
 
     def _run_registry(
         self,
@@ -261,6 +339,8 @@ class DesignVerifierCascade:
         *,
         tag: str | None = None,
         skip: dict[str, str] | None = None,
+        silent_skip: set[str] | None = None,
+        only: set[str] | None = None,
     ) -> None:
         """Run every enabled verifier against `view`, appending what it found.
 
@@ -275,10 +355,21 @@ class DesignVerifierCascade:
         audit that produced `docs/remediation-plan.md` found the first two silently
         counted as run, so a three-part run reported `validated: full` while
         `insert_material` had never executed.
+
+        `silent_skip` is the one exception, and it is deliberately narrow: a check
+        listed there was *done* by another verifier on the same solids (the whole-
+        assembly pass is subsumed by the pair check for a two-part design), so a note
+        would be a false "not evaluated". `only` restricts the pass to named
+        verifiers, for the one whole-assembly call.
         """
         skip = skip or {}
+        silent = silent_skip or set()
         for verifier_id in self.registry.ids():
+            if only is not None and verifier_id not in only:
+                continue
             key = f"{tag}/{verifier_id}" if tag else verifier_id
+            if verifier_id in silent:
+                continue
             if verifier_id in self.registry.disabled():
                 why = self.registry.why_disabled(verifier_id)
                 notes[key] = (
