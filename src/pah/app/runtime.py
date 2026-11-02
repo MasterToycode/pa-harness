@@ -1301,6 +1301,20 @@ def _did_not_run(verifiers: Sequence[str], notes: Mapping[str, str]) -> list[str
     )
 
 
+def verdict_text(entry: Mapping[str, Any] | None) -> str:
+    """One word for a verdict's three states, in one place.
+
+    `ok` is `True`, `False`, or `None` (a check could not run). Three call sites print
+    it — `pah build`, `pah decompose`, `pah export` — and a second copy of this
+    decision is how one of them ends up saying 否 for 未知.
+    """
+    if not entry:
+        return "未评估"
+    if entry.get("ok") is None:
+        return "未知"
+    return "是" if entry.get("ok") else "否"
+
+
 def _verdicts(
     certificates: Sequence[FailureCertificate],
     notes: Mapping[str, str],
@@ -1308,12 +1322,26 @@ def _verdicts(
 ) -> dict[str, Any]:
     """The two questions a user actually asks, answered without overclaiming.
 
-    `ok` is true only when no check in that family **proved** a defect. `not_evaluated`
-    lists the checks that did not run (a verifier that reported a capability boundary),
-    because "we did not look" and "we looked and it is fine" must never read the same.
-    A watertightness check on the exported STLs is included for printability: the file
-    that goes to the slicer is the thing that has to be closed, not the in-memory mesh.
+    Three states, not two (audit `docs/remediation-plan.md` P0-1):
+
+    * `ok: false` — a registered check **proved** a defect;
+    * `ok: true`  — every check meant to run did run, and none found a defect;
+    * `ok: null`  — a check **could not run** (environment certificate). The top-level
+      episode says `failed` (unknown) in that case, and this function now agrees with
+      it. It used to filter environment certificates out before computing `ok`, so a
+      crashed physics verifier produced `assemblable.ok = true, validated = full` in
+      the same report whose episode verdict was `failed` — one document contradicting
+      itself, always in the optimistic direction.
+
+    `not_evaluated` lists the checks that did not run: a capability boundary, a
+    verifier its own sanity gate disabled, or a check that does not apply to a
+    decomposed pair. "We did not look" and "we looked and it is fine" must never read
+    the same, and neither may `validated` claim `full` when the list is non-empty.
+    Watertightness is measured on the exported STLs, because the file that goes to
+    the slicer is the thing that has to be closed, not the in-memory mesh.
     """
+    environment = [cert for cert in certificates if cert.family == "environment"]
+    unknown = bool(environment)
     codes = sorted({cert.code for cert in certificates if cert.family != "environment"})
     assembly_blocking = sorted(set(codes) & ASSEMBLY_BLOCKING_CODES)
     print_blocking = sorted(set(codes) & PRINT_BLOCKING_CODES)
@@ -1331,25 +1359,43 @@ def _verdicts(
     assembly_missing = _did_not_run(ASSEMBLY_VERIFIERS, notes)
     print_missing = _did_not_run(PRINT_VERIFIERS, notes)
 
+    def state(blocking: list[str], missing: list[str], closed_ok: bool = True) -> dict:
+        proven_clean = not blocking and closed_ok
+        if unknown:
+            return {
+                "ok": None,
+                "unknown": True,
+                "blocking": blocking,
+                "not_evaluated": sorted(set(missing) | {c.observed_by for c in environment}),
+                "validated": "unknown",
+            }
+        return {
+            "ok": proven_clean,
+            "unknown": False,
+            "blocking": blocking,
+            "not_evaluated": missing,
+            # Verification is only complete when every check meant to run did run.
+            "validated": "full" if not missing and closed_ok else "partial",
+        }
+
     return {
-        "assemblable": {
-            "ok": not assembly_blocking,
-            "blocking": assembly_blocking,
-            "not_evaluated": assembly_missing,
-            # Verification is only complete when the expensive tier ran too; otherwise
-            # the claim is "no geometric reason it cannot assemble", not "proven".
-            "validated": "full" if not assembly_missing else "partial",
-        },
+        "assemblable": state(assembly_blocking, assembly_missing),
         "printable": {
-            "ok": not print_blocking and closed,
-            "blocking": print_blocking,
-            "not_evaluated": print_missing,
+            **state(print_blocking, print_missing, closed),
             "watertight": watertight,
-            "validated": "full" if not print_missing and closed else "partial",
         },
+        "environment_errors": [
+            {
+                "code": cert.code,
+                "observed_by": cert.observed_by,
+                "locus": cert.locus,
+            }
+            for cert in environment
+        ],
         "meaning": (
-            "ok=false means a registered check proved a defect; 'not_evaluated' means "
-            "that check did not run. Neither list is a pass claim, and the two are "
+            "ok=false means a registered check proved a defect; ok=null means a check "
+            "could not run, so nothing is claimed either way; 'not_evaluated' names the "
+            "checks that did not run. None of the three is a pass claim, and they are "
             "never added together."
         ),
     }

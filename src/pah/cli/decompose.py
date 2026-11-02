@@ -309,7 +309,7 @@ def _decompose(args: argparse.Namespace) -> int:
             for verifier_id in default_registry().ids()
         }
 
-    from pah.app.runtime import _verdicts  # noqa: PLC0415
+    from pah.app.runtime import _verdicts, verdict_text  # noqa: PLC0415
 
     verdicts = _verdicts(certificates, notes, out / "geometry")
 
@@ -387,10 +387,17 @@ def _decompose(args: argparse.Namespace) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=1))
     else:
         _print(report, manifest, out)
+    unknown = any(verdicts[name]["ok"] is None for name in ("assemblable", "printable"))
+    if unknown:
+        # A check could not run, so the answer is not "no" — it is "we do not know".
+        # Exit 3 is the tool-could-not-answer code, which is exactly this case.
+        return EXIT_CRASH
     return EXIT_OK if verdicts["assemblable"]["ok"] and verdicts["printable"]["ok"] else EXIT_NO
 
 
 def _print(report: dict, manifest: dict, out: Path) -> None:
+    from pah.app.runtime import verdict_text  # noqa: PLC0415
+
     run = report["run"]
     print(f"pah decompose · {run['parts']} parts / {run['interfaces']} interfaces · {run['seconds']}s")
     print(f"  source {run['source_mesh']}  ({run['decomposer'].get('method')}, axis {run['decomposer'].get('axis')})")
@@ -412,7 +419,7 @@ def _print(report: dict, manifest: dict, out: Path) -> None:
     verdicts = report["verdicts"]
     for name in ("assemblable", "printable"):
         verdict = verdicts[name]
-        mark = "是" if verdict["ok"] else "否"
+        mark = verdict_text(verdict)
         extra = f"  未评估: {', '.join(verdict['not_evaluated'])}" if verdict["not_evaluated"] else ""
         print(f"  {name:10s} {mark} ({verdict['validated']}){extra}")
         if verdict["blocking"]:

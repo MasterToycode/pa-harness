@@ -295,12 +295,14 @@ def _print_artifacts(result: dict) -> None:
           f"rounds {result['rounds']}   {result['elapsed_s']}s")
     verdicts = result["report"].get("verdicts", {})
     if verdicts:
+        from pah.app.runtime import verdict_text  # noqa: PLC0415
+
         assembly = verdicts.get("assemblable", {})
         printable = verdicts.get("printable", {})
-        print(f"  可装配   {'是' if assembly.get('ok') else '否'}  "
+        print(f"  可装配   {verdict_text(assembly)}  "
               f"({assembly.get('validated')}; 阻断={assembly.get('blocking') or '无'}; "
               f"未评估={assembly.get('not_evaluated') or '无'})")
-        print(f"  可打印   {'是' if printable.get('ok') else '否'}  "
+        print(f"  可打印   {verdict_text(printable)}  "
               f"({printable.get('validated')}; 阻断={printable.get('blocking') or '无'}; "
               f"水密={printable.get('watertight')})")
     if result.get("printable") is not None:

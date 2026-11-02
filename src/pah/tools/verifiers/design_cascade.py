@@ -71,6 +71,26 @@ __all__ = ["DesignVerifierCascade", "default_registry"]
 #: tier is the only one paid in `sim_calls` (`VerifierSpec.cost_class`).
 _ENVIRONMENT = "environment"
 
+#: Verifiers that do not apply to a **decomposed** pair, with the reason a report
+#: must show. One table, read by both the skip decision and the note, because the
+#: audit (`docs/remediation-plan.md` P0-1) found the two drifting apart: the skip set
+#: named both verifiers, only one of them wrote a note, and the missing one was then
+#: counted as run — `validated: full` for a three-part run whose material check had
+#: never executed.
+_PAIR_SKIPS: dict[str, str] = {
+    "insert_material": (
+        "not evaluated: this check asks whether a *generated* insert is a solid "
+        "rather than a shell, by comparing its volume to a parametric reference "
+        "cylinder. A decomposed part has no such reference; running it would fail "
+        "every pair with `excess_material`, which is a category error, not a finding"
+    ),
+    "physics_settle": (
+        "not evaluated: the settle model assumes a peg-shaped insert in a bore. A "
+        "decomposed part is a plate or a block, so the cavity guard does not describe "
+        "the joint. The check that does — joint retention — is not built yet"
+    ),
+}
+
 
 def default_registry() -> DesignVerifierRegistry:
     """Every design-plane verifier this checkout ships, registered and ungated.
@@ -227,28 +247,8 @@ class DesignVerifierCascade:
         notes: dict[str, str] = {}
         for interface in spec.interfaces:
             pair = pair_view(design, interface.id)
-            # `insert_material` asks "is this generated insert a solid rather than a
-            # shell" by comparing its volume to a parametric reference. A decomposed
-            # part is neither: it has no reference cylinder to be a fraction of, and
-            # its volume is whatever the object's material is. Running it would fail
-            # every pair with `excess_material`, which is a category error rather than
-            # a finding.
-            #
-            # `physics_settle` models "a peg-shaped insert seated in a bore": it
-            # measures the bore wall around the insert axis and refuses a view where
-            # the wall is under half the insert's radius. A decomposed part is a plate
-            # or a block — 60 mm wide around a 4 mm socket — so that guard fires on a
-            # perfectly good joint and reports `not evaluated` for every pair. Its
-            # honest status is "this check's model does not apply yet", and the note
-            # below says exactly that. The replacement is a joint-retention settle
-            # (drop the mating part along the axis, require it to stay attached),
-            # which is a different model and is tracked as the next physics step.
-            skip: set[str] = {"insert_material", "physics_settle"}
-            self._run_registry(pair.view, certificates, notes, tag=interface.id, skip=skip)
-            notes[f"{interface.id}/physics_settle"] = (
-                "physics not evaluated: the settle model assumes a peg-shaped insert "
-                "in a bore; this is a decomposed part, so the joint-retention settle "
-                "is the check that applies and it is not built yet"
+            self._run_registry(
+                pair.view, certificates, notes, tag=interface.id, skip=_PAIR_SKIPS
             )
         self._notes = notes
         return certificates
@@ -260,17 +260,34 @@ class DesignVerifierCascade:
         notes: dict[str, str],
         *,
         tag: str | None = None,
-        skip: set[str] | None = None,
+        skip: dict[str, str] | None = None,
     ) -> None:
         """Run every enabled verifier against `view`, appending what it found.
 
         `tag` names the interface a certificate belongs to. Without it, an N-part
         report says "clearance out of band" and a reader cannot tell which of four
         joints needs the repair — and the repair operators take an interface id.
+
+        **Every verifier that does not run gets a note, from the same table that
+        skipped it.** Three ways a check can be absent — a skipped pair check, a
+        verifier its own sanity gate disabled, and (further down) an environment
+        certificate — and all three must read as *not evaluated* downstream. The
+        audit that produced `docs/remediation-plan.md` found the first two silently
+        counted as run, so a three-part run reported `validated: full` while
+        `insert_material` had never executed.
         """
-        skip = skip or set()
+        skip = skip or {}
         for verifier_id in self.registry.ids():
-            if verifier_id in self.registry.disabled() or verifier_id in skip:
+            key = f"{tag}/{verifier_id}" if tag else verifier_id
+            if verifier_id in self.registry.disabled():
+                why = self.registry.why_disabled(verifier_id)
+                notes[key] = (
+                    "not evaluated: the sanity gate disabled this verifier"
+                    + (f" ({why})" if why else "")
+                )
+                continue
+            if verifier_id in skip:
+                notes[key] = skip[verifier_id]
                 continue
             verifier = self.registry.get(verifier_id)
             try:
@@ -286,10 +303,12 @@ class DesignVerifierCascade:
             self._charge(verifier, ran=True)
             note = str(getattr(verifier, "last_note", "") or "")
             if note:
-                notes[f"{tag}/{verifier_id}" if tag else verifier_id] = note
+                notes[key] = note
             certificates.extend(_tagged(cert, tag) for cert in found)
             if self.stop_on_hard and any(cert.family != _ENVIRONMENT for cert in found):
                 break
+        self._notes = notes
+        return certificates
 
     # -- view --------------------------------------------------------------
     def _view(self, assembly: Assembly) -> DesignView:
