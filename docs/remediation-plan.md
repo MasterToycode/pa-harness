@@ -30,7 +30,7 @@
 | **P1-3** | 插入路径连续化 + 外部起点 | ✅ **已完成** | 阶梯下探到 0.1 mm + 起点检测（新码 pproach_not_clear）；0.2 mm 薄膜实测在 0.1 mm 处被检出 |
 | P1-4 | `prompt_hint` 生成缓存死锁 | ⬜ 未开始 | 审计 §4.3（本轮最重的机制级发现） |
 | **P1-5** | 生成可复现：seed / 模型版本 / 输出哈希 | ✅ **已完成** | 21bcb25；生成物内容寻址（<out>/generation/<key>/）续跑零调用；报告与 eval 行带 deterministic_generator |
-| P2 | P2-1 工艺 profile + P2-2 朝向搜索 + P2-4 切片干跑 | ✅ 全部完成（pah.design.process 5 工艺、24 姿态搜索进报告双列、pah export --slice 无切片器即 printable=false） |
+| P2 | P2-1 profile / P2-2 orientation / P2-3 tolerance chain / P2-4 slicer dry-run / P2-5 mixed STEP | DONE: all five, each with tests and measured acceptance |
 | P3 | DiT 局部编辑协议 / LLM 反馈升级 / 记忆评估 | ⬜ 未开始 | 审计 §P3 |
 
 ---
