@@ -53,6 +53,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
+from pah.app.effects import Effects
 from pah.app.store import Store
 from pah.app.trace import Trace
 from pah.core.engine import Engine
@@ -629,6 +630,12 @@ class Runtime:
         #: the parametric builder; `build()` overrides it when `[gen]` names another.
         self.generator_label = generator_label
         self._policy_cache: dict[str, Any] = {}
+        # Reports go through the durable queue, not straight to disk (audit P0-3): the
+        # ticket is ended inside the loop, so a crash between "ended" and "report.json
+        # written" used to leave a directory that --resume refused to touch. An effect
+        # row outlives the process, and a replay writes the same bytes.
+        self.effects = Effects(store)
+        self.effects.handle("write-document", _write_document)
 
     # -- lifecycle ---------------------------------------------------------
     def close(self) -> None:
@@ -743,9 +750,23 @@ class Runtime:
                     "as the run's owner but cannot be read back"
                 )
             if ticket.ended is not None:
+                report_path = out_dir / "report.json"
+                owed = not self.effects.idle("write-document")
+                if not owed and report_path.exists():
+                    raise RuntimeError(
+                        f"the episode in {out_dir} already ended with outcome "
+                        f"{ticket.ended.outcome!r}; there is nothing left to resume"
+                    )
+                # The episode ended, but the report it owed is missing or still queued.
+                # Replaying the write adds no round and re-runs nothing, which is the
+                # difference between a repair and a resume (audit P0-3).
+                self.effects.process_due()
+                if report_path.exists():
+                    return json.loads(report_path.read_text(encoding="utf-8"))
                 raise RuntimeError(
-                    f"the episode in {out_dir} already ended with outcome "
-                    f"{ticket.ended.outcome!r}; there is nothing left to resume"
+                    f"the episode in {out_dir} ended with outcome "
+                    f"{ticket.ended.outcome!r}, but its report was never written and no "
+                    "write is queued; there is nothing to replay"
                 )
             dangling = self._close_dangling_rounds(ticket_id)
             ticket = self.store.tickets.get(ticket_id)
@@ -860,9 +881,16 @@ class Runtime:
             wall_s=time.monotonic() - started,
             notes=notes,
         )
-        (out_dir / "report.json").write_text(
-            json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n", "utf-8"
+        text = json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n"
+        # The payload is the finished document, so a replay is byte-identical to the
+        # attempt that failed. One effect per (kind, key): re-running the same episode
+        # replaces the payload rather than queueing a second write.
+        self.effects.enqueue(
+            "write-document",
+            f"{ticket.id}:report",
+            {"path": str(out_dir / "report.json"), "text": text},
         )
+        self.effects.process_due()
         return report
 
     # -- resume plumbing ---------------------------------------------------
@@ -1308,6 +1336,21 @@ def _did_not_run(verifiers: Sequence[str], notes: Mapping[str, str]) -> list[str
         if verifier in keys
         or any(key.endswith(f"/{verifier}") for key in keys)
     )
+
+
+def _write_document(payload: dict, key: str) -> None:
+    """Write one JSON document atomically; raising keeps the effect row for a retry.
+
+    `tmp` + `os.replace` so a reader never sees a half-written report — the same
+    reason the trace appends rather than rewrites. The payload carries the finished
+    text, which is what makes a replay byte-identical to the interrupted attempt: the
+    effect is the document, not a recipe for producing it.
+    """
+    path = Path(str(payload["path"]))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(str(payload["text"]), encoding="utf-8", newline="\n")
+    os.replace(temporary, path)
 
 
 def budget_block(budget, used) -> dict[str, Any]:
