@@ -56,6 +56,7 @@ __all__ = [
     "CODE_INSUFFICIENT_MATERIAL",
     "CODE_JOINT_NOT_RETAINED",
     "CODE_JOINT_UNSTABLE",
+    "CODE_NOT_MANUFACTURABLE",
     "CODE_PHYSICS_ERROR",
     "CODE_UNSUPPORTED_OVERHANG",
     "ConnectorBuilder",
@@ -80,6 +81,12 @@ __all__ = [
 # --------------------------------------------------------------------------- #
 CODE_INSUFFICIENT_CLEARANCE = "insufficient_clearance"
 CODE_EXCESSIVE_CLEARANCE = "excessive_clearance"
+#: The process cannot make a gap this tight, whatever the task asked for. Kept
+#: apart from `insufficient_clearance`: "the band wants 0.1-0.6" is a design
+#: decision, "FDM cannot resolve 0.02 mm" is a capability limit, and a policy that
+#: cannot tell them apart will keep asking a printer to do something it cannot
+#: (audit P2-3).
+CODE_NOT_MANUFACTURABLE = "not_manufacturable"
 CODE_INSUFFICIENT_MATERIAL = "insufficient_material"
 CODE_EXCESS_MATERIAL = "excess_material"
 CODE_GEOMETRIC_INTERFERENCE = "geometric_interference"
@@ -97,7 +104,11 @@ CODE_PHYSICS_ERROR = "physics_error"
 #: `spec.codes` is not exactly one of these groups: two owners for one code is how
 #: a report starts double-counting evidence.
 DESIGN_CODES: dict[str, tuple[str, ...]] = {
-    "fit_clearance": (CODE_INSUFFICIENT_CLEARANCE, CODE_EXCESSIVE_CLEARANCE),
+    "fit_clearance": (
+        CODE_INSUFFICIENT_CLEARANCE,
+        CODE_EXCESSIVE_CLEARANCE,
+        CODE_NOT_MANUFACTURABLE,
+    ),
     # Second because it is cheap (one parametric rebuild) and because "there is no
     # material in the part" outranks any surface-level judgement: a hollow shell has a
     # perfect outer surface, so every later verifier agrees with it.

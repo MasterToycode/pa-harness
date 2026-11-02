@@ -73,6 +73,7 @@ from pah.design.api import (
     CODE_INSUFFICIENT_CLEARANCE,
     CODE_INSERTION_PATH_BLOCKED,
     CODE_JOINT_UNSTABLE,
+    CODE_NOT_MANUFACTURABLE,
     DESIGN_OPERATOR_IDS,
     spec_of,
 )
@@ -126,6 +127,10 @@ _EDGE: dict[str, Literal["low", "mid", "high"]] = {
     CODE_EXCESSIVE_CLEARANCE: "low",
     CODE_GEOMETRIC_INTERFERENCE: "low",
     CODE_INSERTION_PATH_BLOCKED: "high",
+    # One diagnosis deeper than `insufficient_clearance`, same repair: ask for more
+    # gap, aimed at the middle of the band rather than an edge, because the band
+    # edge may itself be below the process floor that produced this code.
+    CODE_NOT_MANUFACTURABLE: "mid",
 }
 
 #: Code -> the operators worth trying, most specific first. Every row is a
@@ -153,6 +158,12 @@ _EDGE: dict[str, Literal["low", "mid", "high"]] = {
 DEFAULT_LADDER: dict[str, tuple[str, ...]] = {
     CODE_INSUFFICIENT_CLEARANCE: ("set_clearance", "resize_feature"),
     CODE_EXCESSIVE_CLEARANCE: ("set_clearance", "resize_insert"),
+    # A gap the process cannot hold is still repaired by *changing the gap*: the
+    # design asked for something tighter than the profile can make, so the first
+    # move is the direct one. Without this row the fallback ladder sent the loop to
+    # `switch_connector` -- a paradigm change for a 0.03 mm arithmetic problem
+    # (audit P2-3 follow-up).
+    CODE_NOT_MANUFACTURABLE: ("set_clearance", "resize_feature"),
     CODE_GEOMETRIC_INTERFERENCE: ("resize_insert", "shift_part"),
     CODE_INSERTION_PATH_BLOCKED: ("resize_feature", "rotate_part", "shift_part"),
     # A hollow part is not a number problem: every interface parameter is right and

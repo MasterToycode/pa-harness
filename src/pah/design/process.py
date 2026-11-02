@@ -34,13 +34,30 @@ The effective wall floor is **the stricter of** the task's `FitConstraints.min_w
 ("this part must have at least 1.2 mm") and the process's own floor ("this process
 cannot make less than 0.4 mm"). A design that asks for less than the process can make is
 not made more printable by asking; one that asks for more is held to its own word.
+
+The fit floor: `achievable_clearance_mm`
+----------------------------------------
+The same table answers the tolerance question the audit's P2-3 asks: what radial
+clearance can this process *hold*? `tolerance_mm` had no consumer before that
+check, and a fit verifier comparing the design against the task's band cannot
+tell "you asked for the wrong gap" from "this process cannot make that gap". The
+function derives the floor from the tolerance and the feature floor, names its
+inputs in a sentence a certificate can quote, and documents the one convention it
+needs (`CLEARANCE_ERROR_FRACTION`).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-__all__ = ["PROCESS_PROFILES", "ProcessProfile", "effective_min_wall_mm", "profile_for"]
+__all__ = [
+    "CLEARANCE_ERROR_FRACTION",
+    "PROCESS_PROFILES",
+    "ProcessProfile",
+    "achievable_clearance_mm",
+    "effective_min_wall_mm",
+    "profile_for",
+]
 
 
 @dataclass(frozen=True)
@@ -148,3 +165,72 @@ def profile_for(name: str) -> ProcessProfile | None:
 def effective_min_wall_mm(constraints, profile: ProcessProfile) -> float:
     """The stricter of what the design asks and what the process can make."""
     return max(float(constraints.min_wall_mm), float(profile.min_wall_mm))
+
+
+#: How much of a process's bilateral dimensional tolerance is treated as the
+#: clearance error a fit must reserve. Named because it is the one *convention* in
+#: `achievable_clearance_mm` rather than a derived constant; see that function.
+CLEARANCE_ERROR_FRACTION = 0.25
+
+
+def achievable_clearance_mm(
+    profile: ProcessProfile, feature_mm: float
+) -> tuple[float, float, str]:
+    """The radial clearance window `profile` can hold at a `feature_mm` feature.
+
+    Returns `(best_mm, worst_mm, note)`:
+
+    * `best_mm` -- the tightest radial clearance this process can guarantee. A
+      design below it cannot be made: the process's own error is wider than the
+      gap, so a positive gap is not guaranteed.
+    * `worst_mm` -- the loose end of the *same* capability: what the process
+      delivers when the design asks for `best_mm` and the error goes the other
+      way. Together the pair is the realization window `[0, worst_mm]` of the
+      tightest makeable fit, which is the "min-max" a report prints.
+    * `note` -- one sentence naming the inputs the numbers came from, so a
+      certificate can cite the band's source instead of asserting a range
+      (audit C3).
+
+    The chain, so the number can be audited rather than trusted
+    ------------------------------------------------------------
+    1. A shop quotes `tolerance_mm` on a **diameter** ("±0.2 mm on a 10 mm
+       bore"), so one part's *radius* carries `tolerance_mm / 2`.
+    2. The two surfaces of a printed joint come off the same machine in the same
+       job, so their systematic component (shrinkage, tool offset) is common and
+       cancels in the radius *difference* a clearance measures. What a fit must
+       reserve is the random part, taken here as half of one part's radial band:
+       `tolerance_mm / 4`, i.e. `CLEARANCE_ERROR_FRACTION * tolerance_mm`.
+    3. Below the process's feature floor the *same* absolute error sits on a
+       smaller feature, so the fit is proportionally worse: the window is scaled
+       by `max(1, min_feature_mm / feature_mm)`. At or above the floor the factor
+       is one -- a 4 mm bore and a 40 mm bore are held to the same *absolute*
+       fit, because the tolerance was quoted absolutely. This is the rule that
+       makes a small peg harder than a large one.
+
+    Why not the arithmetic worst case
+    ---------------------------------
+    Two ±bands stacked at their extremes give `tolerance_mm` itself, four times
+    this floor. That number flags fits every shop makes, so the gate would block
+    manufacturable designs and the loop would spend its budget repairing them.
+    The harness chooses the random part deliberately, states the convention
+    here, and errs in the direction that *under*-reports unmanufacturability --
+    the safe direction for a check that can reject a design. A stricter shop
+    model overrides it by editing `CLEARANCE_ERROR_FRACTION`, not by patching a
+    verifier.
+    """
+    feature = float(feature_mm)
+    if feature <= 0.0:
+        raise ValueError(
+            f"a feature size must be positive to judge a fit, got {feature_mm!r}"
+        )
+    floor = float(profile.min_feature_mm)
+    scale = max(1.0, floor / feature) if floor > 0.0 else 1.0
+    best = float(profile.tolerance_mm) * CLEARANCE_ERROR_FRACTION * scale
+    worst = 2.0 * best
+    note = (
+        f"{profile.name}: bilateral tolerance {profile.tolerance_mm:.3f} mm on a "
+        f"diameter, clearance error {CLEARANCE_ERROR_FRACTION:.2f} of it, feature "
+        f"{feature:.2f} mm against a {profile.min_feature_mm:.2f} mm floor "
+        f"(scale x{scale:.2f})"
+    )
+    return best, worst, note

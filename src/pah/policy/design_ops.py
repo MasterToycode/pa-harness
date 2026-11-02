@@ -75,6 +75,7 @@ from pah.design.api import (
     CODE_INSUFFICIENT_CLEARANCE,
     CODE_INSERTION_PATH_BLOCKED,
     CODE_JOINT_UNSTABLE,
+    CODE_NOT_MANUFACTURABLE,
     CODE_PHYSICS_ERROR,
     DESIGN_CODES,
     assembly_from_spec,
@@ -130,7 +131,18 @@ HARD_CODES: tuple[str, ...] = tuple(
     )
 )
 
-_CLEARANCE_CODES = (CODE_INSUFFICIENT_CLEARANCE, CODE_EXCESSIVE_CLEARANCE)
+#: Codes whose repair is "change the gap": a band violation says the design asked
+#: for the wrong clearance, and a capability floor says the process cannot hold the
+#: one it asked for. Two diagnoses, one arithmetic -- both are fixed by the same
+#: `set_clearance`, so leaving the capability code out of this tuple made the only
+#: legal repairs for "0.02 mm is too tight for FDM" a connector switch or a
+#: regeneration (audit P2-3 follow-up; measured, `applicable()` returned
+#: `['regenerate_interface', 'switch_connector']`).
+_CLEARANCE_CODES = (
+    CODE_INSUFFICIENT_CLEARANCE,
+    CODE_EXCESSIVE_CLEARANCE,
+    CODE_NOT_MANUFACTURABLE,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -718,7 +730,11 @@ def make_design_operators() -> list[Operator]:
             "resize_feature",
             ResizeFeatureParams,
             _resize_edit("resize_feature"),
-            codes=(CODE_INSUFFICIENT_CLEARANCE, CODE_INSERTION_PATH_BLOCKED),
+            codes=(
+                CODE_INSUFFICIENT_CLEARANCE,
+                CODE_NOT_MANUFACTURABLE,
+                CODE_INSERTION_PATH_BLOCKED,
+            ),
             cost="cheap",
             family="interface",
         ),

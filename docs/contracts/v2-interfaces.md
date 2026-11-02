@@ -100,7 +100,7 @@ spec_of(assembly) -> DesignSpec
 
 | 验证器 id | cost | 码 | 判据 |
 |---|---|---|---|
-| `fit_clearance` | cheap | `insufficient_clearance` `excessive_clearance` | 设计间隙 vs `constraints` 的 [min,max] 带 |
+| `fit_clearance` | cheap | `insufficient_clearance` `excessive_clearance` `not_manufacturable` | 设计间隙 vs `constraints` 的 [min,max] 带；以及设计间隙（正数时）是否低于该工艺能保证的最小间隙（`design/process.py:achievable_clearance_mm`） |
 | `interface_interference` | medium | `geometric_interference` | 装配 pose 下两实体布尔交体积 > 1e-6 mm³ |
 | `insertion_path` | medium | `insertion_path_blocked` | 沿 mate_axis 从 approach 到 seat 采样扫掠，任一位置有交 |
 | `printability` | medium | `below_min_wall` `unsupported_overhang` | 孔壁到外表面最小厚度、悬垂角 vs 工艺 |
@@ -110,6 +110,13 @@ spec_of(assembly) -> DesignSpec
 
 `physics_error` 与 `verifier_error` 一律 `family="environment"`：**不进失败率，不算通过**。
 
+`not_manufacturable` 与 `insufficient_clearance` 的区别是**工艺能力 vs 设计选择**：
+
+- `not_manufacturable`（`family="manufacturing"`）：这个工艺做不出这么紧的间隙，与任务要求的带无关。证书带 `designed_clearance_mm`、`expected_tolerance_mm`、`process_best_clearance_mm`、`process_worst_clearance_mm`、`process`、`feature_mm`、`band_mm`、`post_process` 和一句 `source`（可达间隙从哪来），对应审计 C3。
+- `insufficient_clearance`（`family="assembly"`）：设计间隙不在 `constraints` 的带内，是设计选择的偏离。
+
+两者同时成立时**只报 `not_manufacturable`**（"改紧一点"对做不出的间隙不是修复）；**零或负间隙（压配/过盈）永远只走带判定**——那是设计意图，不是能力失败。可达间隙公式、工艺表与唯一约定系数见 `src/pah/design/process.py`。
+
 **级联适配器必须报账**：`DesignVerifierCascade` 暴露 `spent: Cost`（累积 `geom_calls/sim_calls`）。`policy/loop.py` 会把两次 check 之间的增量记到该轮的 `cost` 上——否则昂贵的物理档会显得免费，「等预算」比较就不公平。同一个快照只验证一次（loop 已按内容指纹缓存，且**失败/环境族的验证不进缓存**，瞬时故障可以重试）。
 
 ---
@@ -118,8 +125,8 @@ spec_of(assembly) -> DesignSpec
 
 | 算子 id | 参数 | 触发码 | targets |
 |---|---|---|---|
-| `set_clearance` | `interface_id, clearance_mm` | `insufficient_clearance` `excessive_clearance` | [a,b] |
-| `resize_feature` | `interface_id, delta_mm` | `insufficient_clearance` `insertion_path_blocked` | [a,b] |
+| `set_clearance` | `interface_id, clearance_mm` | `insufficient_clearance` `excessive_clearance` `not_manufacturable` | [a,b] |
+| `resize_feature` | `interface_id, delta_mm` | `insufficient_clearance` `not_manufacturable` `insertion_path_blocked` | [a,b] |
 | `resize_insert` | `interface_id, delta_mm` | `geometric_interference` | [a,b] |
 | `shift_part` | `part_id, delta_mm[3]` | `geometric_interference` `insertion_path_blocked` | [part_id] |
 | `rotate_part` | `part_id, delta_deg[3]` | `insertion_path_blocked` | [part_id] |

@@ -1183,6 +1183,11 @@ class Runtime:
                     final_spec.constraints.min_clearance_mm,
                     final_spec.constraints.max_clearance_mm,
                 ],
+                # The tolerance chain behind that band (audit C3). A clean fit emits
+                # no certificate, so this can only come from the verifier instance;
+                # `_fit_capability_block` says `available: false` rather than
+                # inventing a range.
+                "fit_capability": _fit_capability_block(self.verifiers),
             },
             "rounds": [
                 {
@@ -1322,6 +1327,11 @@ ASSEMBLY_BLOCKING_CODES = frozenset(
         "excess_material",
         "insufficient_clearance",
         "excessive_clearance",
+        # A gap the process cannot hold is not a hint: the joint as designed cannot
+        # be made, so it blocks the assembly claim the same way an overlap does
+        # (audit P2-3). Kept in this set rather than the print one because the
+        # finding is about the *fit*, and the print block owns surface feasibility.
+        "not_manufacturable",
         "geometric_interference",
         "insertion_path_blocked",
         "joint_unstable",
@@ -1388,6 +1398,77 @@ def _orientation_block(verifiers: Any) -> dict[str, Any]:
         "angles_deg": [round(float(value), 3) for value in angles] if angles else None,
         "top": [row.as_dict() for row in top],
         "bridged_ceilings": [dict(row) for row in bridged],
+    }
+
+
+def _fit_clearance_verifier(verifiers: Any) -> Any:
+    """The mounted `fit_clearance` verifier, or `None` when it cannot be reached.
+
+    Same unwrapping as `_printability_verifier`: the runtime may wrap the cascade in
+    its own fault injector, and the verifier *instance* is what carries the
+    tolerance-chain state a certificate cannot (`last_capability`).
+    """
+    cascade = getattr(verifiers, "_inner", verifiers)
+    registry = getattr(cascade, "registry", None)
+    getter = getattr(registry, "get", None)
+    if getter is None:
+        return None
+    try:
+        return getter("fit_clearance")
+    except Exception:  # a registry without this verifier is "unknown", not a crash
+        return None
+
+
+def _fit_capability_block(verifiers: Any) -> dict[str, Any]:
+    """The tolerance-chain column: what gap the process could hold, and its source.
+
+    Audit C3 asks the report to record the designed clearance, the expected
+    tolerance and the min-max **with the profile they came from**. A failing fit
+    carries that in its certificate; a *clean* fit emits no certificate at all, so
+    after the run the only place the numbers still exist is the verifier instance
+    (`FitClearance.last_capability`) -- the same reason `_orientation_block` reads
+    `Printability.orientation_source`.
+
+    `available: false` is the honest answer when the cascade cannot be reached or
+    the capability was not evaluated (an unknown process, a kind with no feature
+    size). C3's whole point is provenance; filling this in from the spec's band
+    would answer a different question and read as if a check had run.
+    """
+    verifier = _fit_clearance_verifier(verifiers)
+    capability = getattr(verifier, "last_capability", None)
+    if not isinstance(capability, Mapping) or not capability:
+        return {"available": False}
+
+    required = (
+        "process",
+        "designed_clearance_mm",
+        "expected_tolerance_mm",
+        "process_best_clearance_mm",
+        "process_worst_clearance_mm",
+        "feature_mm",
+        "tolerance_mm",
+    )
+    if any(key not in capability for key in required):
+        return {"available": False, "reason": "the fit verifier recorded no tolerance chain"}
+
+    band = capability.get("band_mm") or ()
+    return {
+        "available": True,
+        "process": str(capability["process"]),
+        "designed_clearance_mm": round(float(capability["designed_clearance_mm"]), 6),
+        "expected_tolerance_mm": round(float(capability["expected_tolerance_mm"]), 6),
+        "process_best_clearance_mm": round(
+            float(capability["process_best_clearance_mm"]), 6
+        ),
+        "process_worst_clearance_mm": round(
+            float(capability["process_worst_clearance_mm"]), 6
+        ),
+        "band_mm": [round(float(value), 6) for value in band],
+        "feature_mm": round(float(capability["feature_mm"]), 6),
+        "tolerance_mm": round(float(capability["tolerance_mm"]), 6),
+        "manufacturable": bool(capability.get("manufacturable", True)),
+        "post_process": str(capability.get("post_process", "")),
+        "source": str(capability.get("source", "")),
     }
 
 

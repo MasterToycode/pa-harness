@@ -725,6 +725,9 @@ def test_hard_codes_are_the_design_codes_minus_the_environment_one():
     assert set(HARD_CODES) == {
         "insufficient_clearance",
         "excessive_clearance",
+        # A gap the process cannot hold is hard evidence too (audit P2-3): it is a
+        # manufacturing limit, not an `environment` failure, so a policy must see it.
+        "not_manufacturable",
         "insufficient_material",
         "excess_material",
         "geometric_interference",
