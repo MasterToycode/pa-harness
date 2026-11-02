@@ -98,6 +98,15 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
         default=None,
         help="slicer settings file for --slice (PrusaSlicer/OrcaSlicer --load, CuraEngine -j)",
     )
+    export.add_argument(
+        "--step",
+        dest="step",
+        action="store_true",
+        help=(
+            "also write engineering.step: the fit features (hole/peg/slot/dovetail) "
+            "as B-Rep and dimension-checked on read-back; does not change `printable`"
+        ),
+    )
     export.add_argument("--json", action="store_true", help="machine-readable output")
     export.set_defaults(handler=_export)
 
@@ -154,6 +163,7 @@ def export_run(
     strict: bool = False,
     slice: bool = False,
     slice_profile: str | Path | None = None,
+    step: bool = False,
 ) -> dict:
     """Write the printable files for one run; returns the manifest, never raises.
 
@@ -164,6 +174,11 @@ def export_run(
     `slice=True` appends a slicer dry run to the gate. It is opt-in because it needs an
     external program and can take minutes; when it is requested, a missing slicer is a
     refusal (`printable: false`), not a skip.
+
+    `step=True` emits `engineering.step` next to the printable files, holding the B-Rep
+    fit features and a read-back dimension check (`pah.tools.step_export`). It is *not*
+    a print claim: a STEP failure lands in `problems` and leaves `printable` alone,
+    because a shop's engineering interface and a printer's evidence are two questions.
     """
     import trimesh  # noqa: PLC0415
 
@@ -237,8 +252,13 @@ def export_run(
         if problems:
             row["ok"] = False
 
-    artifacts: list[str] = []
+    # Artifact rows carry their product class *only when* --step is requested: a
+    # manifest written without `--step` must stay byte-identical to what it always
+    # was. With two product classes in one manifest (print_mesh / engineering_step), a
+    # consumer must not have to infer which is which from a file suffix.
+    artifacts: list[tuple[str, str]] = []
     slicing: dict | None = None
+    engineering_step: dict | None = None
     scratch: tempfile.TemporaryDirectory | None = None
     try:
         if slice:
@@ -260,7 +280,7 @@ def export_run(
                 for part_id, row in part_rows.items():
                     target = out / f"{part_id}.stl"
                     parts[part_id].export(target)
-                    artifacts.append(str(target.resolve()))
+                    artifacts.append((str(target.resolve()), "print_mesh"))
                     row["exported_stl"] = str(target.resolve())
             if "3mf" in formats and all(row["watertight"] for row in part_rows.values()):
                 from trimesh.exchange.threemf import export_3MF  # noqa: PLC0415
@@ -268,11 +288,21 @@ def export_run(
                 scene = trimesh.Scene({part_id: mesh for part_id, mesh in parts.items()})
                 target = out / "assembly.3mf"
                 target.write_bytes(export_3MF(scene))
-                artifacts.append(str(target.resolve()))
+                artifacts.append((str(target.resolve()), "print_mesh"))
             elif "3mf" in formats:
                 problems.append("3mf skipped: a non-watertight part cannot be written into a 3MF")
             if slicing is not None:
                 _persist_gcode(slicing, out / "gcode")
+        if step:
+            # The engineering interface is its own question: it is built from the spec,
+            # not from the print gate, and a failure here is recorded in `problems`
+            # without touching `printable`. When the strict gate refused the export,
+            # nothing is written — including no STEP.
+            engineering_step = _engineering_step(spec, out, wrote)
+            for problem in engineering_step.get("problems", ()):
+                problems.append(f"step: {problem}")
+            if engineering_step.get("path"):
+                artifacts.append((engineering_step["path"], "engineering_step"))
 
         manifest = {
             "schema": "pah-print-manifest/3",
@@ -285,10 +315,13 @@ def export_run(
                 "the report fully validated that claim: ok, validated=='full', and no "
                 "not-evaluated checks. With --slice, `printable` also requires a slicer "
                 "dry run to succeed; `slicing` records which backend produced the "
-                "numbers, and a failed or missing slicer keeps `printable` false."
+                "numbers, and a failed or missing slicer keeps `printable` false. With "
+                "--step, `engineering_step` holds the B-Rep fit features and a read-back "
+                "dimension check; it is an engineering interface, not print evidence, so "
+                "it never changes `printable`."
             ),
             "parts": part_rows,
-            "artifacts": artifacts,
+            "artifacts": _artifact_rows(artifacts, with_kind=step),
             "wrote_files": wrote,
             "print_orientation_deg": (spec.get("constraints") or {}).get("print_orientation_deg"),
             "generator": (report.get("run") or {}).get("generator"),
@@ -300,18 +333,93 @@ def export_run(
             "printable": printable_ok,
             "assembly_ready": readiness["assembly_ready"]["ok"],
         }
+        if step:
+            # Key absent when the flag is off: a manifest that did not ask for an
+            # engineering artefact must not suggest one was attempted.
+            manifest["engineering_step"] = engineering_step
         if wrote:
             manifest_path = out / "print-manifest.json"
             manifest_path.write_text(
                 json.dumps(manifest, ensure_ascii=False, indent=1) + "\n", "utf-8"
             )
-            artifacts.append(str(manifest_path.resolve()))
+            # Appended after the file is written so the file does not list itself,
+            # but the manifest *returned to a caller* does — the behaviour every
+            # existing caller already relies on.
+            artifacts.append((str(manifest_path.resolve()), "manifest"))
+            manifest["artifacts"] = _artifact_rows(artifacts, with_kind=step)
     finally:
         if scratch is not None:
             scratch.cleanup()
 
     manifest["_run"] = str(run)
     return manifest
+
+
+def _artifact_rows(
+    artifacts: list[tuple[str, str]], *, with_kind: bool
+) -> list[str] | list[dict]:
+    """`artifacts` as the manifest should carry it.
+
+    Flat paths unless `--step` was requested: changing the shape unconditionally would
+    rewrite every existing manifest for a capability most runs do not use, while with
+    two product classes present the kind is the thing a consumer needs.
+    """
+    if with_kind:
+        return [{"path": path, "kind": kind} for path, kind in artifacts]
+    return [path for path, _kind in artifacts]
+
+
+def _engineering_step(spec_payload: dict, out: Path, wrote: bool) -> dict:
+    """Build and measure `engineering.step`, or explain why it is not there.
+
+    The spec is the input, not the report: the report's verdicts describe print
+    validity, while the fit features are what the design *asked for*. A missing or
+    unreadable spec is therefore a STEP-shaped refusal, never an empty step file.
+    """
+    from pah.tools.step_export import (  # noqa: PLC0415 - the kernel is the slow part
+        DIMENSION_TOLERANCE_MM,
+        StepExportError,
+        export_features,
+    )
+
+    empty: dict = {
+        "ok": False,
+        "path": None,
+        "features": [],
+        "bodies": [],
+        "problems": [],
+        "dimension_check": {
+            "tolerance_mm": DIMENSION_TOLERANCE_MM,
+            "ok": False,
+            "checked": [],
+        },
+    }
+    if not wrote:
+        empty["problems"] = [
+            "not written: the export was refused before writing (fix the printability "
+            "gate first)"
+        ]
+        return empty
+    if not spec_payload:
+        empty["problems"] = [
+            "no spec.json in the run directory, so the fit features cannot be built"
+        ]
+        return empty
+    from pah.design.spec import DesignSpec  # noqa: PLC0415
+
+    try:
+        spec = DesignSpec.model_validate(spec_payload)
+    except Exception as error:  # noqa: BLE001 - an unreadable spec is a refusal
+        empty["problems"] = [
+            f"spec.json is not a DesignSpec: {type(error).__name__}: {error}"
+        ]
+        return empty
+    try:
+        result = export_features(spec, None, out / "engineering.step")
+    except StepExportError as error:
+        empty["problems"] = [str(error)]
+        return empty
+    return result.to_manifest()
 
 
 def _slice_parts(
@@ -411,6 +519,7 @@ def _export(args: argparse.Namespace) -> int:
             strict=bool(args.for_print),
             slice=bool(args.slice),
             slice_profile=args.slice_profile,
+            step=bool(args.step),
         )
     except (FileNotFoundError, ValueError) as error:
         print(f"pah export: {error}")
@@ -419,8 +528,10 @@ def _export(args: argparse.Namespace) -> int:
         print(json.dumps(manifest, ensure_ascii=False, indent=1))
     else:
         print(f"pah export · {manifest['_run']}")
-        for path in manifest["artifacts"]:
-            print(f"  {path}")
+        for item in manifest["artifacts"]:
+            # A flat path without --step; `{path, kind}` with it, because the manifest
+            # then holds two product classes and the printer must not guess.
+            print(f"  {item if isinstance(item, str) else item['path']}")
         print(
             f"  units {manifest['units']}  orientation {manifest['print_orientation_deg']}  "
             f"generator {manifest['generator']}"
@@ -446,6 +557,17 @@ def _export(args: argparse.Namespace) -> int:
                     )
             else:
                 print(f"  slicing       否 ({slicing['backend'] or '没有切片器'})")
+        engineering = manifest.get("engineering_step")
+        if engineering is not None:
+            if engineering["ok"]:
+                checked = engineering["dimension_check"].get("checked") or []
+                print(
+                    f"  engineering   step · {len(engineering['features'])} feature(s) · "
+                    f"{len(engineering['bodies'])} envelope(s) · "
+                    f"{len(checked)} dimension(s) read back"
+                )
+            else:
+                print("  engineering   否（STEP 未生成或不一致）")
         if manifest["problems"]:
             print("\n  不满足的条件：")
             for problem in manifest["problems"]:
@@ -454,4 +576,9 @@ def _export(args: argparse.Namespace) -> int:
             print("\n  严格模式：未写出任何文件（先判后写）。")
     if args.for_print and not manifest["printable"]:
         return EXIT_CRASH
+    engineering = manifest.get("engineering_step")
+    if engineering is not None and not engineering["ok"]:
+        # The caller asked for an engineering artefact and did not get one. That is a
+        # business "no" even when the printable claim itself holds.
+        return EXIT_NO
     return EXIT_OK if manifest["printable"] else EXIT_NO
