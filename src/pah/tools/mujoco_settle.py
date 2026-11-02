@@ -517,15 +517,32 @@ def _insert_shape(
     rounding = float(finite.max() - finite.min()) / float(finite.max())
     radius = float(finite.max())
     half_len = float(np.abs(local[:, 2]).max())
-    if rounding <= 0.02 and radius > 0.0:
+    # The cylinder shortcut used to be decided on *roundness alone*, which meant a
+    # hollow tube or a stepped round part was replaced by a solid cylinder before any
+    # volume or convexity check ran. The settle then reported stability for a different
+    # object, and `joint_unstable` / `dynamic_penetration` were filed as physical facts
+    # (audit P1-2, §7.1). Two extra conditions make it honest:
+    #
+    #   * closed, positive volume;
+    #   * the solid actually fills the cylinder it is being replaced with (within 5%).
+    #     A hollow tube is 60-90% short of that and now falls through to the hull /
+    #     CoACD branch, where the model says what it is.
+    solid_volume = float(insert.volume) if insert.is_watertight else 0.0
+    cylinder_volume = math.pi * radius**2 * (2.0 * half_len)
+    fill = solid_volume / cylinder_volume if cylinder_volume > 0.0 else 0.0
+    if rounding <= 0.02 and radius > 0.0 and insert.is_watertight and fill >= 0.95:
         return {
             "kind": "cylinder",
             "radius_mm": radius,
             "half_len_mm": half_len,
             "rounding_error": rounding,
+            # How much of the nominal cylinder the real solid occupies. 1.0 is a true
+            # cylinder; 0.55 is a tube, and reporting that number is what lets a reader
+            # see the shortcut was justified instead of taken on trust.
+            "solid_fraction": fill,
+            "approximation_error": 1.0 - fill,
         }
     hull = insert.convex_hull
-    solid_volume = float(insert.volume) if insert.is_watertight else 0.0
     hull_volume = float(hull.volume)
     hull_over_solid = (hull_volume / solid_volume) if solid_volume > 0.0 else None
     if solid_volume > 0.0 and hull_volume > solid_volume * 1.02:
@@ -543,6 +560,8 @@ def _insert_shape(
             "half_len_mm": half_len,
             "rounding_error": rounding,
             "hull_over_solid": hull_over_solid,
+            "solid_fraction": fill,
+            "approximation_error": 1.0 - fill if fill <= 1.0 else 0.0,
             "parts": parts,
             "decomposition": f"coacd: {len(parts)} convex hulls",
         }
@@ -552,6 +571,8 @@ def _insert_shape(
         "half_len_mm": half_len,
         "rounding_error": rounding,
         "hull_over_solid": hull_over_solid,
+        "solid_fraction": fill,
+        "approximation_error": max(1.0 - fill, 0.0),
         "hull_faces": hull.faces,
     }
 
