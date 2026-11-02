@@ -21,6 +21,15 @@ Where it is read
 run `pah` from the checkout). A missing file is normal and not an error: the default
 configuration needs no credentials at all.
 
+One entrance, on purpose
+------------------------
+`pah.cli.main` calls this once, at startup, before any handler runs. **Nothing
+else may call it** — in particular no adapter module, and never at import time. An
+import that loads `.env` bypasses `$PAH_ENV_FILE` (so a test or CI run sees the
+developer's real keys) and turns "import a plugin" into "do work". This file exists
+so credentials have exactly one path into the process; the paid-generation incident
+of 2026-11-02 happened because one adapter opened a second path.
+
 Format: one `NAME=VALUE` per line, `#` comments, optional `export `, optional
 surrounding quotes. That is the subset people actually type; a full dotenv grammar
 would be a dependency for no benefit here.

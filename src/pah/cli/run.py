@@ -23,8 +23,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
+from pah.app.providers import (
+    PAID_GENERATION_VAR,
+    PaidGenerationRefused,
+    ProviderError,
+    paid_generation_record,
+)
 from pah.cli.main import EXIT_CRASH, EXIT_NO, EXIT_OK
 from pah.design.spec import DesignSpec
 
@@ -78,6 +85,12 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     run.add_argument("--geom-calls", dest="geom_calls", type=int, default=None)
     run.add_argument("--sim-calls", dest="sim_calls", type=int, default=None)
     run.add_argument(
+        "--allow-paid-gen",
+        dest="allow_paid_gen",
+        action="store_true",
+        help="authorise a generator that costs money (recorded in the report)",
+    )
+    run.add_argument(
         "--config", default=None, help="pah.toml (plugins and LLM providers)"
     )
     run.add_argument("--json", action="store_true", help="print the report as JSON")
@@ -87,6 +100,20 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
 def _run(args: argparse.Namespace) -> int:
     """Loads the spec, composes the runtime, runs the episode, reports the outcome."""
     from pah.app import runtime  # noqa: PLC0415 - keeps `pah --help` off the geometry stack
+
+    if args.allow_paid_gen:
+        # The flag's only job is this line. It is set before anything resolves a
+        # generator, so every later decision (the runtime's resolver, the cascade)
+        # sees the same authorisation instead of each re-reading the command line.
+        os.environ[PAID_GENERATION_VAR] = "1"
+    try:
+        # Refuses here — before a run directory exists and before any neighbour is
+        # imported — when `pah.toml` names a generator that costs money and the gate
+        # is closed. `None` means the free path, and nothing is recorded.
+        paid = paid_generation_record(args.config, action="pah run")
+    except (PaidGenerationRefused, ProviderError) as error:
+        print(f"pah run: {error}")
+        return EXIT_CRASH
 
     spec = _load_spec(args.spec)
     if spec is None:
@@ -141,11 +168,31 @@ def _run(args: argparse.Namespace) -> int:
     finally:
         composed.close()
 
+    if paid is not None:
+        stamp_paid_generation(report, out=Path(args.out), record=paid)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=1))
     else:
         _print_report(report)
     return _exit_code(report)
+
+
+def stamp_paid_generation(report: dict, *, out: Path, record: dict) -> None:
+    """Put the authorisation into `report.json`, where a reader can see it.
+
+    The runtime writes the report before this command receives it, and the fact being
+    recorded — a human passed a flag — belongs to the command, not to the episode. So
+    the fields are added and the file rewritten with the runtime's own serialisation,
+    instead of a second report format growing a second copy of the truth. The record is
+    never inferred here: it is what the gate returned when it opened.
+    """
+    run = report.setdefault("run", {})
+    run["paid_generation"] = True
+    run["paid_provider"] = record["provider"]
+    run["paid_billing"] = record.get("billing", "")
+    (Path(out) / "report.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n", "utf-8"
+    )
 
 
 def _load_spec(path: str) -> DesignSpec | None:
@@ -223,6 +270,9 @@ def _print_report(report: dict) -> None:
           f"({report['trace']['rows']} rows, "
           f"{len(report['trace']['replay_hashes'])} geometry hashes)")
     print(f"  report        {Path(run['out']) / 'report.json'}")
+    if run.get("paid_generation"):
+        print(f"  paid gen      {run.get('paid_provider')}"
+              f"（billing={run.get('paid_billing') or '-'}，已用 --allow-paid-gen 授权）")
     for note in report.get("notes", ()):
         print(f"  note          {note}")
     if run["status"] == "stopped":

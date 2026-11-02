@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from pah.cli.main import EXIT_CRASH, EXIT_NO, EXIT_OK
@@ -47,6 +48,12 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     )
     evaluate.add_argument("--out", required=True, help="directory for runs/, results.jsonl, summary.md")
     evaluate.add_argument("--config", default=None, help="pah.toml (plugins and LLM providers)")
+    evaluate.add_argument(
+        "--allow-paid-gen",
+        dest="allow_paid_gen",
+        action="store_true",
+        help="authorise a generator that costs money for every cell (refused by default)",
+    )
     evaluate.add_argument("--seed", type=int, default=0, help="seed handed to every policy")
     evaluate.add_argument("--json", action="store_true", help="print the rows as JSON")
     evaluate.set_defaults(handler=_eval)
@@ -68,12 +75,30 @@ def parse_policies(text: str) -> list[str]:
 
 def _eval(args: argparse.Namespace) -> int:
     """Loads the suite, runs every cell, writes the two artefacts, prints the summary."""
+    from pah.app.providers import (  # noqa: PLC0415 - only paid configs need it
+        PAID_GENERATION_VAR,
+        PaidGenerationRefused,
+        ProviderError,
+        paid_generation_record,
+    )
     from pah.eval import report as eval_report  # noqa: PLC0415 - keeps `pah --help` light
     from pah.eval import runner as eval_runner  # noqa: PLC0415
 
     policies = parse_policies(args.policies)
     if not policies:
         print("pah eval: --policies is empty; name at least one policy")
+        return EXIT_CRASH
+    if args.allow_paid_gen:
+        # One authorisation for the whole comparison: every cell builds its own
+        # runtime, and a flag that only opened the gate for the first cell would make
+        # the table mix paid and refused cells.
+        os.environ[PAID_GENERATION_VAR] = "1"
+    try:
+        # Refuse before the first cell writes anything: an eval that silently spends
+        # a generation per cell is the most expensive possible accident.
+        paid = paid_generation_record(args.config, action="pah eval")
+    except (PaidGenerationRefused, ProviderError) as error:
+        print(f"pah eval: {error}")
         return EXIT_CRASH
     if "llm" in policies:
         # Same discipline as `pah run`: a comparison that asks a model with no provider
@@ -115,6 +140,14 @@ def _eval(args: argparse.Namespace) -> int:
     except OSError as error:
         print(f"pah eval: cannot write under {out}: {error}")
         return EXIT_CRASH
+
+    if paid is not None:
+        # The cells are the rows here; `results.jsonl` is this command's report, so the
+        # authorisation is recorded on every row rather than in a separate file nobody
+        # reads. Every cell used the same provider — the gate is process-wide.
+        for row in rows:
+            row["paid_generation"] = True
+            row["paid_provider"] = paid["provider"]
 
     results_path = eval_report.write_results(out / "results.jsonl", rows)
     summary = eval_report.summary_markdown(

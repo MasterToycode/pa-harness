@@ -6,29 +6,46 @@ SecretKey** and a TC3-HMAC-SHA256 signature, version `2025-05-13`, endpoint
 This adapter carries that protocol so the harness only sees
 `materialize(spec, out_dir) -> MaterializedDesign`.
 
-Where the keys go — `D:\\yanyi\\pa-harness\\.env`（pah 启动时自动读，已 gitignore）:
+Where the keys come from — this process's environment, never this module. `pah`
+fills that environment once at startup from `D:\\yanyi\\pa-harness\\.env`（已
+gitignore）:
 
     TENCENTCLOUD_SECRET_ID=AKID...
     TENCENTCLOUD_SECRET_KEY=...
     TENCENTCLOUD_REGION=ap-guangzhou
 
+**This file must not read `.env` itself.** It used to, at import time, and that is
+exactly how a read-only audit script spent real money: the import loaded credentials
+the run had never been authorised to use, `pah.toml` resolved `hunyuan:python`, and
+one acceptance check called the paid service. An import must be free of side effects;
+credentials arrive from `pah`'s one loader (`pah.app.env`), or from an explicit
+export. A bare `python examples/hunyuan3d_materializer.py` has neither, so export the
+two variables before running it directly.
+
 拿钥匙的地方：腾讯云控制台 → 访问管理 CAM → API 密钥管理 → 新建密钥；并在
 [混元生3D 控制台](https://console.cloud.tencent.com/ai3d) 开通服务（按任务计费）。
 
-Wire it up in `pah.toml`:
+Wire it up in `pah.toml` (and declare the billing unit — that is what the paid gate
+reads):
 
     [gen]
     default = "hunyuan"
 
     [gen.providers.hunyuan]
     kind = "python"
+    billing = "per_call"
     compat = { target = "examples/hunyuan3d_materializer.py:materialize" }
+
+Without `--allow-paid-gen` (or `PAH_ALLOW_PAID_GEN=1`), `pah run` / `pah build` /
+`pah eval` refuse this provider and say why — configuration alone cannot spend money.
 
 Then, in order (each step is cheap and fails for one reason only):
 
-    python examples/hunyuan3d_materializer.py --check        # SDK/keys/网络就绪了吗（不花钱）
-    pah providers doctor --role gen --call                   # 真生成一次（会花钱，见下）
-    pah run --spec fixtures/design/demo-peg-hole-interfere.json --policy rule --rounds 3 --out runs/hunyuan
+    python examples/hunyuan3d_materializer.py --check       # SDK/keys 就绪了吗（不花钱，不读 .env）
+    pah providers doctor --role gen                         # 同一项检查，经统一入口读 .env
+    pah providers doctor --role gen --call --allow-paid-gen # 真生成一次（会花钱，见下）
+    pah run --spec fixtures/design/demo-peg-hole-interfere.json \\
+            --policy rule --rounds 3 --out runs/hunyuan --allow-paid-gen
 
 Two honesty rules this file keeps
 --------------------------------
@@ -57,15 +74,14 @@ REPO = Path(__file__).resolve().parents[1]
 if str(REPO / "src") not in sys.path:
     sys.path.insert(0, str(REPO / "src"))
 
-from pah.app.env import load_env_file  # noqa: E402
 from pah.design.api import MaterializedDesign, assembly_from_spec  # noqa: E402
 from pah.design.connectors import builder_for  # noqa: E402
 from pah.design.spec import DesignSpec  # noqa: E402
 
-# A bare `python examples/...py` does not go through `pah`'s entry point, so it has to
-# load `.env` itself or `--check` would report "keys not set" while `pah run` works.
-# Filling only missing variables means an explicit shell export still wins.
-load_env_file(REPO / ".env")
+# Importing this module reads no `.env`, mutates no environment variable and opens no
+# socket. `pah` has already loaded credentials by the time an adapter is resolved, and
+# an import that loads them again is how the paid API got called by accident. The
+# proxy fix therefore runs at call time (`_generate`), not here.
 
 
 def _bypass_proxy_for_service() -> None:
@@ -92,8 +108,6 @@ def _bypass_proxy_for_service() -> None:
     os.environ["NO_PROXY"] = joined
     os.environ["no_proxy"] = joined
 
-
-_bypass_proxy_for_service()
 
 SECRET_ID_ENV = "TENCENTCLOUD_SECRET_ID"
 SECRET_KEY_ENV = "TENCENTCLOUD_SECRET_KEY"
@@ -177,9 +191,11 @@ def _credentials() -> tuple[str, str, str]:
     region = os.environ.get(REGION_ENV, "").strip() or DEFAULT_REGION
     if not secret_id or not secret_key:
         raise RuntimeError(
-            f"Hunyuan3D needs ${SECRET_ID_ENV} and ${SECRET_KEY_ENV}. Put them in "
-            "D:\\yanyi\\pa-harness\\.env (pah reads it at start), then run "
-            "`python examples/hunyuan3d_materializer.py --check`."
+            f"Hunyuan3D needs ${SECRET_ID_ENV} and ${SECRET_KEY_ENV} in this process. "
+            "`pah` loads them from D:\\yanyi\\pa-harness\\.env at startup, so run "
+            "through `pah providers doctor --role gen` (or `pah run --allow-paid-gen`); "
+            "a bare `python examples/hunyuan3d_materializer.py` must export them first, "
+            "because this module deliberately does not read `.env` itself."
         )
     return secret_id, secret_key, region
 
@@ -278,6 +294,9 @@ def _submit_payload(prompt: str, *, model: str = "", image_url: str | None = Non
 
 def _generate(prompt: str, *, image_url: str | None = None) -> trimesh.Trimesh:
     """Submit → poll → download → mesh. Every failure is a sentence, not a stack."""
+    # At the moment of the call, not at import: an import must not mutate this
+    # process's proxy settings, and a run that never generates pays no attention.
+    _bypass_proxy_for_service()
     client = _client()
     submit_action, query_action = TIERS[_tier()]
     job = _call(client, submit_action, _submit_payload(prompt, model=_model(), image_url=image_url))
@@ -530,7 +549,10 @@ def _check() -> int:
     problems: list[str] = []
     for name in (SECRET_ID_ENV, SECRET_KEY_ENV):
         if not os.environ.get(name):
-            problems.append(f"{name} is not set (put it in .env)")
+            problems.append(
+                f"{name} is not set in this process (pah loads .env at start; a bare "
+                "script must export it)"
+            )
     try:
         import tencentcloud.ai3d.v20250513  # noqa: F401,PLC0415
 
@@ -553,7 +575,10 @@ def _check() -> int:
     print(f"actions    {submit_action} -> {query_action}")
     for problem in problems:
         print(f"FAIL       {problem}")
-    print(f"\n{len(problems)} problem(s). --check never calls the service (no cost).")
+    print(
+        f"\n{len(problems)} problem(s). --check never calls the service (no cost) "
+        "and never reads .env."
+    )
     return 0 if not problems else 1
 
 

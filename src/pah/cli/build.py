@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 import webbrowser
 from pathlib import Path
@@ -52,15 +53,29 @@ def execute(
     seed: int = 0,
     design: str = "default",
     preview: bool = True,
+    allow_paid_generation: bool = False,
     progress: Progress | None = None,
     cancel: Callable[[], bool] | None = None,
 ) -> dict:
     """Run one build and return everything a caller (CLI or page) needs.
 
-    Raises on a refusal — a bad kind, an uncomposable runtime, a failed episode — so
-    the caller prints one sentence rather than a two-line report about nothing.
+    Raises on a refusal — a bad kind, a paid generator with the gate closed, an
+    uncomposable runtime, a failed episode — so the caller prints one sentence rather
+    than a two-line report about nothing.
     """
     note = progress or (lambda _line: None)
+
+    from pah.app.providers import (  # noqa: PLC0415 - the gate is a CLI concern
+        PAID_GENERATION_VAR,
+        paid_generation_record,
+    )
+
+    if allow_paid_generation:
+        # Same one-line authorisation as `pah run`: decided here, read later by the
+        # resolver the runtime composes.
+        os.environ[PAID_GENERATION_VAR] = "1"
+    # Before the run directory exists: a refusal must not leave an empty build behind.
+    paid = paid_generation_record(config, action="pah build")
     target = Path(out) if out else Path("runs") / f"build-{time.strftime('%Y%m%d-%H%M%S')}"
     target.mkdir(parents=True, exist_ok=True)
     note(f"run directory {target}")
@@ -139,6 +154,12 @@ def execute(
     episode = report.get("episode", {})
     note(f"verdict {episode.get('verdict')} in {elapsed:.1f}s "
          f"({episode.get('rounds')} round(s))")
+    if paid is not None:
+        # Same field set `pah run` records, written by the same helper: a build and a
+        # run of the same paid config must not describe their cost differently.
+        from pah.cli.run import stamp_paid_generation  # noqa: PLC0415
+
+        stamp_paid_generation(report, out=target, record=paid)
 
     result: dict = {
         "out": str(target),
@@ -237,6 +258,12 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     build.add_argument("--seed", type=int, default=0)
     build.add_argument("--no-preview", action="store_true", help="skip PNG/HTML rendering")
     build.add_argument(
+        "--allow-paid-gen",
+        dest="allow_paid_gen",
+        action="store_true",
+        help="authorise a generator that costs money (refused by default)",
+    )
+    build.add_argument(
         "--open", action="store_true", help="open the interactive preview in your browser"
     )
     build.add_argument("--json", action="store_true", help="print the report as JSON")
@@ -257,6 +284,7 @@ def _build(args: argparse.Namespace) -> int:
             seed=args.seed,
             design=args.design,
             preview=not args.no_preview,
+            allow_paid_generation=args.allow_paid_gen,
             progress=lambda line: None if args.json else print(f"  · {line}"),
         )
     except Exception as error:  # noqa: BLE001 - one sentence, not a stack

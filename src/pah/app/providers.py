@@ -5,7 +5,7 @@ plans, OpenRouter, a local vLLM or llama-server — speak the same wire protocol
 So there is one adapter for all of them and the differences live in
 configuration, not in code.
 
-Two rules separate this from a product harness:
+Three rules separate this from a product harness:
 
 - **No silent fallback.** A run whose two calls went to different providers is
   not one experiment. `select` refuses; a caller that wants a fallback asks for
@@ -13,6 +13,12 @@ Two rules separate this from a product harness:
 - **Billing is declared, never inferred.** A token plan and a subscription have
   no per-token price, so cost is always recorded as tokens plus a billing unit.
   Comparing runs across providers compares tokens and call counts, not money.
+- **Generation that can spend money is opt-in, once.** A provider that declares a
+  billing unit, or whose adapter is one of the vendor adapters under `examples/`,
+  refuses to resolve unless this process carries `PAH_ALLOW_PAID_GEN` — the flag a
+  human types. Configuration alone must never be able to spend money: on 2026-11-02
+  an audit script that only meant to read a report called a cloud generator, because
+  `pah.toml` was enough to make it so.
 """
 
 from __future__ import annotations
@@ -33,19 +39,43 @@ __all__ = [
     "LocalParametric",
     "NullLLM",
     "OpenAICompatible",
+    "PAID_GENERATION_VAR",
+    "PaidGenerationRefused",
     "ProviderConfig",
     "ProviderError",
     "Registry",
     "ReplayLLM",
     "Transport",
     "Usage",
+    "chosen_gen_provider",
+    "generation_is_paid",
+    "load_python_target",
     "load_registry",
+    "paid_generation_allowed",
+    "paid_generation_record",
+    "require_paid_generation",
+    "resolve_generator",
     "resolve_python_target",
 ]
 
 #: How a provider charges. `per_token` is the only one with a price; the rest
 #: consume a quota, a subscription or nothing.
 Billing = Literal["per_token", "quota", "subscription", "free", "gpu_seconds", "per_call"]
+
+#: The one environment variable that authorises a paid generation for this process.
+#: A CLI flag sets it; nothing in configuration can, so a copied `pah.toml` — or a
+#: script that thought it was only reading files — cannot spend money by accident.
+PAID_GENERATION_VAR = "PAH_ALLOW_PAID_GEN"
+
+#: The spellings that open the gate. Everything else, including a typo, leaves it
+#: closed: refusing a run costs one flag, an unintended generation costs money.
+_ALLOW_PAID_VALUES = frozenset({"1", "true"})
+
+#: Where the vendor-backed adapters live (`hunyuan3d_materializer.py`,
+#: `xpart_decomposer.py`). They sit outside the package on purpose — `pah decompose`
+#: loads one by path — so a `compat.target` under this directory is itself the
+#: declaration that executing it calls a service which bills.
+_EXAMPLES_DIR = Path(__file__).resolve().parents[3] / "examples"
 
 _KINDS = (
     "openai-compatible",
@@ -68,6 +98,21 @@ Transport = Callable[[str, dict[str, str], bytes], dict[str, Any]]
 
 class ProviderError(RuntimeError):
     """A provider is missing, misconfigured, or refused the call."""
+
+
+class PaidGenerationRefused(ProviderError):
+    """A paid generator was resolved without this process being told to pay for it.
+
+    Subclasses `ProviderError` because every caller that already turns a provider
+    refusal into one sentence and exit 3 — the composition root, `pah run`, the
+    doctor — must do the same here without learning a second error class. `provider`
+    and `billing` carry the facts a report or a log needs when the refusal is shown.
+    """
+
+    def __init__(self, message: str, *, provider: str = "", billing: str = "") -> None:
+        super().__init__(message)
+        self.provider = provider
+        self.billing = billing
 
 
 @dataclass(frozen=True)
@@ -160,6 +205,139 @@ def load_registry(path: str | Path) -> Registry:
             )
     defaults = {role: data.get(role, {}).get("default", "") for role in ("llm", "gen")}
     return Registry(providers=providers, defaults=defaults, path=path)
+
+
+# --------------------------------------------------------------------------
+# the paid-generation gate
+# --------------------------------------------------------------------------
+
+
+def chosen_gen_provider(config_path: str | Path | None = None) -> ProviderConfig | None:
+    """The provider `[gen] default` names, or `None` when nothing is configured.
+
+    `None` covers both "no default" and "the default names a provider this file does
+    not define": neither can generate anything, so neither is a paid decision.
+    """
+    from pah.plugins import resolve_config_path  # noqa: PLC0415 - plugin layer is optional
+
+    path = resolve_config_path(config_path)
+    registry = load_registry(str(path) if path is not None else "pah.toml")
+    try:
+        return registry.choose("gen")
+    except ProviderError:
+        return None
+
+
+def paid_generation_allowed(environ: dict[str, str] | None = None) -> bool:
+    """Whether this process was told, explicitly, that a paid call may happen."""
+    environment = environ if environ is not None else os.environ
+    return str(environment.get(PAID_GENERATION_VAR, "")).strip().lower() in _ALLOW_PAID_VALUES
+
+
+def generation_is_paid(config: ProviderConfig) -> bool:
+    """Whether using `config` as the generator can spend money.
+
+    Read from what the provider *declares*, never from its id, so a future
+    `hunyuan2` (or a local adapter borrowing the name) is classified by its own
+    config rather than by a list someone has to remember to update:
+
+    * `kind = "local-parametric"` is the shipped generator: free by construction;
+    * a `billing` unit other than unset/`free` is a declared cost;
+    * a `compat.target` that is a file under this checkout's `examples/` is the
+      vendor-adapter convention — those adapters cannot run without a paid service.
+    """
+    if config.kind == "local-parametric":
+        return False
+    if _declared_billing(config):
+        return True
+    return _targets_examples_adapter(str((config.compat or {}).get("target", "") or ""))
+
+
+def _declared_billing(config: ProviderConfig) -> str:
+    """The billing unit this provider *declares*, or `""` for the default.
+
+    `ProviderConfig.billing` defaults to `"free"`, so "declares nothing" and
+    "declares free" read the same there. Treating the default as no declaration is
+    what keeps the refusal honest: without it, a vendor adapter that never wrote a
+    billing line would be described as `billing=free` while it is charging money.
+    """
+    billing = str(config.billing or "").strip()
+    return billing if billing and billing != "free" else ""
+
+
+def _targets_examples_adapter(target: str) -> bool:
+    """`compat.target` names a file in this checkout's `examples/`, in either spelling.
+
+    The checkout-relative spelling the shipped `pah.toml` uses
+    (`examples/hunyuan3d_materializer.py:materialize`) is matched as written, so the
+    gate does not depend on the current directory; an absolute spelling is matched
+    after resolving it. The split is at the **last** colon: a Windows drive letter is
+    one too, and classifying a paid adapter as free is the one mistake that costs money.
+    """
+    module_name = target.rpartition(":")[0].strip() or target.strip()
+    if not _looks_like_a_path(module_name):
+        return False
+    if module_name.replace("\\", "/").startswith("examples/"):
+        return True
+    path = Path(module_name).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    try:
+        return path.resolve().is_relative_to(_EXAMPLES_DIR)
+    except (OSError, ValueError):
+        return False
+
+
+def require_paid_generation(config: ProviderConfig, *, action: str = "") -> None:
+    """Refuse a paid generator unless this process was explicitly authorised.
+
+    The sentence states what did *not* happen — no call, no charge — because after an
+    incident like the one this gate exists for, the first question is whether the
+    refusal already cost something. It names both ways to authorise: the flag for the
+    command being run, and the variable for a wrapper that has no flag (`pah serve`,
+    a shell script).
+    """
+    if not generation_is_paid(config) or paid_generation_allowed():
+        return
+    provider = f"{config.id}:{config.kind}"
+    declared = _declared_billing(config)
+    if declared:
+        reason, detail = "声明了计费单位", f"billing={declared}"
+    else:
+        reason, detail = "是 examples/ 下的 vendor 适配器", "billing undeclared"
+    where = f"（{action}）" if action else ""
+    raise PaidGenerationRefused(
+        f"付费生成闸已关闭{where}：生成器 {provider!r} {reason}（{detail}）。"
+        "这次不会调用任何生成服务，也不会产生费用；"
+        "要真的生成请加 --allow-paid-gen（或设置 PAH_ALLOW_PAID_GEN=1）；"
+        "只想跑离线流程，就把 pah.toml 里的 [gen] default 换成 local。",
+        provider=provider,
+        billing=declared or detail,
+    )
+
+
+def paid_generation_record(
+    config_path: str | Path | None = None, *, action: str = ""
+) -> dict[str, Any] | None:
+    """The report fields an authorised paid generator requires, or `None` for free.
+
+    Recording and permitting are one decision on purpose: a report that carries
+    `paid_generation: true` cannot exist unless the gate was opened, and an opened
+    gate cannot leave the report silent about who was (or could be) charged. A paid
+    provider the run cannot execute (`kind` is not `python`) still closes the gate
+    but is not recorded, because no money can move through it.
+    """
+    config = chosen_gen_provider(config_path)
+    if config is None or not generation_is_paid(config):
+        return None
+    require_paid_generation(config, action=action)
+    if config.kind != "python":
+        return None
+    return {
+        "paid_generation": True,
+        "provider": f"{config.id}:{config.kind}",
+        "billing": _declared_billing(config) or "undeclared (vendor adapter)",
+    }
 
 
 # --------------------------------------------------------------------------
@@ -373,8 +551,38 @@ def build_client(
     raise ProviderError(f"kind {config.kind!r} has no client")
 
 
+def resolve_generator(config_path: str | Path | None = None) -> Callable[..., Any] | None:
+    """The python generator `[gen]` configures, gated; `None` when it configures none.
+
+    `None` is not a fallback: the composition root decides what "no configured
+    generator" means (T1's parametric materialiser, in `pah.app.runtime`). This
+    function owns the *decision to spend*, which is why it lives beside the provider
+    registry and not in the composition root — and both spellings end in
+    `resolve_python_target`, so no caller can resolve a vendor adapter past the gate.
+    """
+    config = chosen_gen_provider(config_path)
+    if config is None or config.kind != "python":
+        return None
+    return resolve_python_target(config)
+
+
 def resolve_python_target(config: ProviderConfig) -> Callable[..., Any]:
-    """The callable an `[gen.providers.<id>] kind="python"` entry names.
+    """The `Materializer` port's callable, refused when it is paid and unauthorised.
+
+    The gate sits here because this is the one function every composition root
+    already calls to turn `[gen]` into geometry: resolving a vendor adapter is the
+    moment a run decides to spend, so no caller has to remember to re-check.
+    """
+    require_paid_generation(config)
+    return load_python_target(config)
+
+
+def load_python_target(config: ProviderConfig) -> Callable[..., Any]:
+    """Import the callable an `[gen.providers.<id>] kind="python"` entry names.
+
+    This is the import half without the payment gate: `pah providers doctor` may
+    import an adapter for free — importing is not calling — and reports the gate's
+    state beside it. A run must enter through `resolve_python_target` instead.
 
     `compat = { target = "package.module:function" }`. Two spellings are supported,
     because a first integration and a released adapter are different situations:
@@ -403,8 +611,18 @@ def resolve_python_target(config: ProviderConfig) -> Callable[..., Any]:
             f"gen provider {config.id!r} has kind 'python' but declares no "
             "`compat.target`; write it as `compat = { target = \"module:function\" }`"
         )
-    module_name, _, attribute = raw.partition(":")
-    if not attribute:  # accept "pkg.mod.func" by splitting on the last dot
+    # Split on the **last** colon: a Windows drive letter is a colon too, and
+    # `D:\checkout\examples\adapter.py:materialize` split on the first one yields the
+    # module `D` and an attribute that is a path — a config that can never resolve,
+    # which the P0-4 review found while adding the payment gate. No colon at all means
+    # the dotted spelling `pkg.module.function`.
+    if ":" in raw:
+        module_name, _, attribute = raw.rpartition(":")
+        if "/" in attribute or "\\" in attribute:
+            # The last colon was a drive letter, not the separator: keep the first split
+            # so the error below names the target the user actually wrote.
+            module_name, _, attribute = raw.partition(":")
+    else:
         module_name, _, attribute = raw.rpartition(".")
     if not module_name or not attribute:
         raise ProviderError(

@@ -12,10 +12,14 @@ this command prints the five facts that distinguish them, one service at a time:
     pah providers doctor                # config + key/import checks, no network
     pah providers doctor --call         # also spend one tiny call per service
     pah providers doctor --role gen     # only the generator (DiT) side
+    pah providers doctor --role gen --call --allow-paid-gen   # call a vendor adapter
 
 `--call` is deliberately explicit: it is the only thing here that can cost money
-or load a model. The default run touches nothing remote and imports nothing heavy
-beyond what the check itself needs.
+or load a model. Calling a generator that bills — one whose config declares a
+billing unit, or whose adapter is a vendor adapter under `examples/` — additionally
+needs `--allow-paid-gen`, the same gate `pah run` uses; without it the check fails
+with the reason and makes no request. The default run touches nothing remote and
+imports nothing heavy beyond what the check itself needs.
 
 Exit codes follow `cli/main.py`: 0 all checks passed, 1 a check said no, 3 crash.
 """
@@ -62,6 +66,12 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
         help="actually call each service once (may cost money / load a model)",
     )
     doctor.add_argument(
+        "--allow-paid-gen",
+        dest="allow_paid_gen",
+        action="store_true",
+        help="authorise a generator that costs money; required for --call on one",
+    )
+    doctor.add_argument(
         "--spec", default=DEFAULT_SPEC, help="spec used by the generator self-test"
     )
     doctor.add_argument("--json", action="store_true", help="machine-readable output")
@@ -69,8 +79,13 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
 
 
 def run(args: argparse.Namespace) -> int:
+    from pah.app.providers import PAID_GENERATION_VAR  # noqa: PLC0415
     from pah.plugins import PluginError, resolve_config_path  # noqa: PLC0415
 
+    if args.allow_paid_gen:
+        # The same flag, and the same one-line authorisation, as `pah run`: `--call`
+        # on a vendor adapter spends a generation, so it needs the same yes.
+        os.environ[PAID_GENERATION_VAR] = "1"
     try:
         path = resolve_config_path(args.config)
         sections: dict[str, dict] = {}
@@ -180,9 +195,13 @@ def _call_llm(client) -> dict:
 def _check_gen(config_path: Path | None, *, call: bool, spec_path: str) -> tuple[dict, int]:
     """Whether a DiT/CAD adapter is configured, importable, and shape-correct."""
     from pah.app.providers import (  # noqa: PLC0415
+        PaidGenerationRefused,
         ProviderError,
+        generation_is_paid,
+        load_python_target,
         load_registry,
-        resolve_python_target,
+        paid_generation_allowed,
+        require_paid_generation,
     )
 
     registry = load_registry(str(config_path) if config_path is not None else "pah.toml")
@@ -190,6 +209,7 @@ def _check_gen(config_path: Path | None, *, call: bool, spec_path: str) -> tuple
         "role": "gen",
         "configured": False,
         "default": registry.defaults.get("gen", ""),
+        "paid": False,
         "checks": [],
         "call": None,
     }
@@ -225,8 +245,27 @@ def _check_gen(config_path: Path | None, *, call: bool, spec_path: str) -> tuple
         )
         return section, 1
 
+    # Informational, not a failure: a paid generator is a legitimate configuration.
+    # What a reader needs to know before `--call` is whether the gate is open.
+    paid = generation_is_paid(config)
+    section["paid"] = paid
+    section["checks"].append(
+        {
+            "check": "paid generator",
+            "ok": True,
+            "detail": (
+                "declared paid — gate open (authorised)"
+                if paid_generation_allowed()
+                else "declared paid — gate closed: --call needs --allow-paid-gen"
+            )
+            if paid
+            else "free path: no service is called",
+        }
+    )
     try:
-        target = resolve_python_target(config)
+        # Import only: a doctor check must stay free even when the adapter is paid.
+        # It is the *call* below that the gate governs.
+        target = load_python_target(config)
     except ProviderError as error:
         section["checks"].append({"check": "target importable", "ok": False, "detail": str(error)})
         return section, 1
@@ -236,8 +275,16 @@ def _check_gen(config_path: Path | None, *, call: bool, spec_path: str) -> tuple
     section["using"] = config.id
     failed = 0
     if call:
-        section["call"] = _call_gen(target, spec_path)
-        failed += int(not section["call"]["ok"])
+        try:
+            require_paid_generation(config, action="pah providers doctor --call")
+        except PaidGenerationRefused as error:
+            # The refusal is the call's result, not a crash: exit 1 with the sentence
+            # that says no request was made and which flag would authorise one.
+            section["call"] = {"ok": False, "error": str(error)}
+            failed = 1
+        else:
+            section["call"] = _call_gen(target, spec_path)
+            failed += int(not section["call"]["ok"])
     return section, failed
 
 
