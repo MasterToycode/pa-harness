@@ -32,6 +32,7 @@ applies to event kinds.
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable, Protocol, runtime_checkable
@@ -65,7 +66,10 @@ __all__ = [
     "MaterializedDesign",
     "Materializer",
     "assembly_from_spec",
+    "generation_key",
     "geometry_hash",
+    "materializer_identity",
+    "prompt_hint_of",
     "spec_of",
 ]
 
@@ -486,6 +490,69 @@ def geometry_hash(spec: DesignSpec, part_id: str) -> str:
     return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()[:32]
 
 
+def materializer_identity(materializer: object) -> dict:
+    """What a materialiser declares about itself, by optional attributes.
+
+    The `Materializer` port is a plain callable, which is right for the two-part
+    parametric case but says nothing about a *generative* one. Four optional
+    attributes cover the difference without a second protocol:
+
+    * `generator_id` — who produced it (`"hunyuan3d"`, `"local-parametric"`);
+    * `model_version`, `seed` — what fixes the sample, when the service allows it;
+    * `supports_prompt_hint` — whether a text hint actually reaches the model;
+    * `non_deterministic` — whether the same request can return a different mesh.
+
+    Reading attributes rather than requiring a base class is deliberate: an adapter
+    is often a module-level function, and making it a class to satisfy identity would
+    be ceremony around four strings.
+    """
+    return {
+        "id": str(getattr(materializer, "generator_id", "") or "parametric"),
+        "model_version": getattr(materializer, "model_version", None),
+        "seed": getattr(materializer, "seed", None),
+        "supports_prompt_hint": bool(getattr(materializer, "supports_prompt_hint", False)),
+        "non_deterministic": bool(getattr(materializer, "non_deterministic", False)),
+    }
+
+
+def generation_key(
+    spec: DesignSpec,
+    *,
+    generator_id: str = "parametric",
+    model_version: object = None,
+    seed: object = None,
+) -> str:
+    """Which *generation request* this spec describes — not which design it is.
+
+    `content_key` is the design's identity and deliberately excludes `provenance`
+    (§ design/spec.py), which is where a repair writes its `prompt_hint`. That is
+    correct for the design and fatal for generation: a hint-only repair changed no
+    number, so the geometry cache hit, the generator was never called, and the loop
+    reported a *geometry cycle* on a design it had never rebuilt. The audit measured
+    it end to end (round 0 materialised in ~64 s, round 1 "materialised" in ~2 s from
+    cache) and called it the one channel by which an agent could guide the generator.
+
+    So generation identity is a separate hash: design content + the hint + who
+    generated it + the model version and seed that fix the sample. Two hints are two
+    requests; the same hint twice is one request and may be cached.
+    """
+    hint = str((spec.provenance or {}).get("prompt_hint") or "").strip()
+    payload = {
+        "content_key": spec.content_key(),
+        "generator_id": str(generator_id or "parametric"),
+        "model_version": "" if model_version is None else str(model_version),
+        "seed": "" if seed is None else str(seed),
+        "prompt_hint": hint,
+    }
+    blob = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
+    return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()[:32]
+
+
+def prompt_hint_of(spec: DesignSpec) -> str:
+    """The text a repair asked the generator for, or `""`."""
+    return str((spec.provenance or {}).get("prompt_hint") or "").strip()
+
+
 def assembly_from_spec(
     *,
     spec: DesignSpec,
@@ -564,19 +631,33 @@ def assembly_from_spec(
         spec.content_key(),
         parent,
     )
+    constraints: dict = {
+        SPEC_SLOT: spec.model_dump(),
+        **landmarks,
+        **({"mate_axis": list(mate_axis)} if mate_axis is not None else {}),
+        **({"approach_mm": float(approach_mm)} if approach_mm is not None else {}),
+        **({"interfaces": dict(interfaces)} if interfaces else {}),
+    }
+    # A hinted spec names a different **generation request**, and the loop's cycle
+    # detector only sees assemblies. Without this line two assemblies built from the
+    # same design but different hints fingerprint identically, so a hint-only repair
+    # reads as "no progress" — the audit's P1-4 deadlock, reproduced one layer up from
+    # the materialiser cache. `output_hash` (the actual sample) is stamped later by
+    # the cascade, which is the only layer that has the meshes.
+    hint = prompt_hint_of(spec)
+    if hint:
+        constraints["generation"] = {
+            "key": generation_key(spec),
+            "prompt_hint": hint,
+            "generator_id": "unspecified",
+        }
     return Assembly(
         id=assembly_id,
         version=version,
         parts=parts,
         joints=joints,
         connectors=(),
-        constraints={
-            SPEC_SLOT: spec.model_dump(),
-            **landmarks,
-            **({"mate_axis": list(mate_axis)} if mate_axis is not None else {}),
-            **({"approach_mm": float(approach_mm)} if approach_mm is not None else {}),
-            **({"interfaces": dict(interfaces)} if interfaces else {}),
-        },
+        constraints=constraints,
         parent=parent,
     )
 

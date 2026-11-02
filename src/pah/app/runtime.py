@@ -828,9 +828,17 @@ class Runtime:
             certs = list(result.certificates)
             verdict = result.verdict
             reason = result.reason
+            # Which generation request produced the final geometry. Prefer the
+            # cascade's record (it has the generator id and the output hashes); fall
+            # back to the spec-level key the operators' assemblies carry. Absent on the
+            # parametric path.
+            generation = getattr(self.verifiers, "generation", None) or (
+                result.assembly.constraints or {}
+            ).get("generation")
         else:
             final_spec = self._current_spec(out_dir, ticket, spec)
             certs = []
+            generation = None
             verdict = "stopped"
             reason = f"stopped after {stopped_at[-1]} round(s) for the resume demo"
         self._write_spec_file(out_dir / "spec.json", final_spec)
@@ -843,6 +851,7 @@ class Runtime:
             rounds_requested=rounds,
             resume=resume,
             stopped=stopped,
+            generation=generation,
             verdict=verdict,
             reason=reason,
             certificates=certs,
@@ -1053,6 +1062,7 @@ class Runtime:
         stopped: bool,
         verdict: str,
         reason: str,
+        generation: dict | None = None,
         certificates: Sequence[FailureCertificate],
         bridge: SpecBridge,
         budget: Budget,
@@ -1129,6 +1139,11 @@ class Runtime:
                 "final_clearance_mm": round(final_spec.clearance_mm, 6),
                 "final_revision": final_spec.revision,
                 "provenance": dict(final_spec.provenance),
+                # Which request produced the final geometry (generator, model version,
+                # seed, prompt hint, output hashes), or None on the parametric path.
+                # Audit P1-4: a report that cannot name the request cannot attribute a
+                # repair to it.
+                "generation": generation,
                 "fit_band_mm": [
                     final_spec.constraints.min_clearance_mm,
                     final_spec.constraints.max_clearance_mm,

@@ -146,13 +146,39 @@ def assembly_fingerprint(assembly: Assembly) -> str:
 
     Used for cycle detection: a plan that returns geometry already seen cannot
     make progress, so the loop stops instead of burning the budget on it.
+
+    Two additions for generative materialisers (audit P1-4):
+
+    * `geom.output_hash` — the hash of the mesh the generator actually returned. The
+      spec-derived `geom.hash` cannot see a different sample of the same request, so
+      without this a hint-only regeneration looked like "nothing changed";
+    * `constraints.generation.key` — the generation request's identity. A repair that
+      only changed `prompt_hint` changes no design number, so without it the loop
+      called the result a geometry cycle for a design it had never rebuilt.
+
+    Both are absent on the parametric path, where the fingerprint is byte-identical
+    to what it was before this change.
     """
     parts = tuple(
-        sorted((str(p.get("id")), _digest((p.get("geom") or {}).get("hash"))) for p in assembly.parts)
+        sorted(
+            (
+                str(part.get("id")),
+                _digest((part.get("geom") or {}).get("hash")),
+                _digest((part.get("geom") or {}).get("output_hash")),
+            )
+            for part in assembly.parts
+        )
     )
     joints = tuple(sorted(_canonical(j) for j in assembly.joints))
     connectors = tuple(sorted(_canonical(c) for c in assembly.connectors))
-    return key("assembly-fingerprint", parts, joints, connectors)
+    generation = (assembly.constraints or {}).get("generation") or {}
+    return key(
+        "assembly-fingerprint",
+        parts,
+        joints,
+        connectors,
+        _digest(generation.get("key")),
+    )
 
 
 def _canonical(value: object) -> str:

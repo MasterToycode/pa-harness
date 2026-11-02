@@ -172,6 +172,17 @@ class DesignVerifierCascade:
         self._designs: dict[str, MaterializedDesign] = {}
         self._spent = Cost()
         self._notes: dict[str, str] = {}
+        #: Notes produced by materialisation itself (a hint the generator cannot use),
+        #: merged into `notes` at the end of a check. They are not verifier notes but
+        #: they describe a check that did not happen, which is the same claim.
+        self._generation_notes: dict[str, str] = {}
+        #: Cached `materializer_identity()`; the adapter may be a module-level function
+        #: with optional attributes, so this is read once per cascade.
+        self._materializer_identity: dict | None = None
+        #: The generation block of the last materialisation that stamped one, so the
+        #: report can name the request even though the loop's assemblies are built
+        #: from the spec by the operators, not by this cascade.
+        self._last_generation: dict | None = None
         #: The last disassembly search, or `None` when the assembly was too small to
         #: need one (two parts are covered by `insertion_path`). The report reads it
         #: to say whether an order was found, which is a different claim from
@@ -191,6 +202,14 @@ class DesignVerifierCascade:
         `geom_calls`/`sim_calls`.
         """
         return self._spent
+
+    @property
+    def generation(self) -> dict | None:
+        """The last generation request this cascade made (key, generator, output hashes).
+
+        None on the parametric path, where there is no request to name.
+        """
+        return self._last_generation
 
     @property
     def sequence(self):
@@ -228,6 +247,7 @@ class DesignVerifierCascade:
         why six pieces of physics did not have to be rewritten for N parts.
         """
         self._notes = {}
+        self._generation_notes = {}
         try:
             spec = spec_of(assembly)
         except Exception as error:
@@ -254,6 +274,7 @@ class DesignVerifierCascade:
         # is skipped here — silently, because writing "not evaluated" would be false:
         # the check *was* done, by the verifier that owns the pair.
         self._run_registry(view, certificates, notes, silent_skip={"global_interference"})
+        notes.update(self._generation_notes)
         self._notes = notes
         return certificates
 
@@ -300,6 +321,7 @@ class DesignVerifierCascade:
             skip=_PAIR_SKIPS,
         )
         self._check_sequence(spec, design, certificates, notes)
+        notes.update(self._generation_notes)
         self._notes = notes
         return certificates
 
@@ -440,9 +462,51 @@ class DesignVerifierCascade:
             return self._materialise(spec).view()
         return view
 
+    def _identity(self) -> dict:
+        """What this cascade's materialiser declares about itself (cached)."""
+        if self._materializer_identity is None:
+            from pah.design.api import materializer_identity  # noqa: PLC0415
+
+            self._materializer_identity = materializer_identity(
+                self._materializer or _default_materializer()
+            )
+        return self._materializer_identity
+
+    def _generation_key(self, spec) -> str:
+        """The cache key for *this generation request*.
+
+        For a parametric materialiser with no hint it is exactly `content_key`, so the
+        two-part path is unchanged. For a generative one it folds in the hint, the
+        generator, the model version and the seed — the audit's P1-4 fix: a hint-only
+        repair used to change no number, hit the geometry cache, never call the model,
+        and get reported as a geometry cycle.
+        """
+        from pah.design.api import generation_key, prompt_hint_of  # noqa: PLC0415
+
+        identity = self._identity()
+        hint = prompt_hint_of(spec)
+        if hint and not identity["supports_prompt_hint"]:
+            # The audit's rule: a materialiser that cannot consume a hint must not be
+            # asked to. Ignoring it keeps the cache key on content, and the note says
+            # so — the alternative is a "regeneration" that provably cannot differ.
+            self._generation_notes["generator_hint"] = (
+                "not evaluated: the repair asked for a prompt hint, but generator "
+                f"{identity['id']!r} does not declare `supports_prompt_hint`, so the "
+                "hint was ignored and no new geometry was requested"
+            )
+            return spec.content_key()
+        if not identity["non_deterministic"] and not hint:
+            return spec.content_key()
+        return generation_key(
+            spec,
+            generator_id=identity["id"],
+            model_version=identity["model_version"],
+            seed=identity["seed"],
+        )
+
     def _materialise(self, spec) -> MaterializedDesign:
-        """`spec` built into `root`, cached by content, charged per solid."""
-        key = spec.content_key()
+        """`spec` built into `root`, cached by generation request, charged per solid."""
+        key = self._generation_key(spec)
         cached = self._designs.get(key)
         if cached is not None:
             return cached
@@ -453,12 +517,57 @@ class DesignVerifierCascade:
             )
         materialize = self._materializer or _default_materializer()
         design = materialize(spec, self.root)
+        design = self._stamped(spec, design, key)
         self._designs[key] = design
         # One geometry call per materialisation, however many parts it built: the
         # charge is for "the adapter had to touch geometry", which is what makes an
         # expensive cascade visible against a cheap one (contract §3).
         self._spent = _plus(self._spent, geom=1)
         return design
+
+    def _stamped(self, spec, design: MaterializedDesign, key: str) -> MaterializedDesign:
+        """Record the generation request and each part's *actual* output hash.
+
+        `geom.hash` is spec-derived on purpose (contract: reproducible from
+        `spec.json`), so it cannot distinguish two samples of the same request. The
+        two facts a cycle detector needs — which request, and what came back — are
+        stamped here instead of changing what `geom.hash` means.
+        """
+        from pah.design.api import prompt_hint_of  # noqa: PLC0415
+
+        identity = self._identity()
+        hint = prompt_hint_of(spec)
+        if not identity["non_deterministic"] and not hint:
+            return design  # parametric: nothing to stamp, fingerprint unchanged
+
+        output_hashes = {
+            part_id: _mesh_digest(mesh) for part_id, mesh in design.meshes.items()
+        }
+        parts = tuple(
+            {
+                **part,
+                "geom": {**(part.get("geom") or {}), "output_hash": output_hashes.get(str(part.get("id")))},
+            }
+            for part in design.assembly.parts
+        )
+        constraints = {
+            **(design.assembly.constraints or {}),
+            "generation": {
+                "key": key,
+                "generator_id": identity["id"],
+                "model_version": identity["model_version"],
+                "seed": identity["seed"],
+                "supports_prompt_hint": identity["supports_prompt_hint"],
+                "non_deterministic": identity["non_deterministic"],
+                "prompt_hint": hint or None,
+                "output_hashes": output_hashes,
+            },
+        }
+        self._last_generation = constraints["generation"]
+        return replace(
+            design,
+            assembly=replace(design.assembly, parts=parts, constraints=constraints),
+        )
 
     # -- internals ---------------------------------------------------------
     def _charge(self, verifier, *, ran: bool) -> None:
@@ -520,6 +629,19 @@ def _tagged(cert: FailureCertificate, tag: str | None) -> FailureCertificate:
     locus = dict(cert.locus or {})
     locus["interface"] = tag
     return replace(cert, locus=locus)
+
+
+def _mesh_digest(mesh) -> str:
+    """A content address for a generated mesh, for the cycle detector.
+
+    Reuses the canonical triangle-soup hash from pah.design.decompose: the same
+    function the blank store uses, so "two runs produced the same solid" means one
+    thing in this codebase. Imported lazily so the verifier layer does not drag the
+    decomposition in at module load.
+    """
+    from pah.design.decompose import mesh_hash  # noqa: PLC0415
+
+    return mesh_hash(mesh)
 
 
 def _plus(base: Cost, *, geom: int = 0, sim: int = 0) -> Cost:

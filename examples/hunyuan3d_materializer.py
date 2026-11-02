@@ -182,6 +182,17 @@ def materialize(spec: DesignSpec, out_dir: str | Path) -> MaterializedDesign:
     )
 
 
+# The four facts a *generative* materialiser has to declare (pah.design.api:
+# materializer_identity). Without them a hint-only repair reads as "no change" and
+# the loop calls it a geometry cycle instead of asking the model again — audit P1-4.
+materialize.generator_id = "hunyuan3d"  # type: ignore[attr-defined]
+materialize.supports_prompt_hint = True  # type: ignore[attr-defined]
+materialize.non_deterministic = True  # type: ignore[attr-defined]
+materialize.model_version = (  # type: ignore[attr-defined]
+    os.environ.get(MODEL_ENV, "").strip() or os.environ.get(TIER_ENV, "").strip() or None
+)
+
+
 # --------------------------------------------------------------------------- #
 # credentials + the service
 # --------------------------------------------------------------------------- #
