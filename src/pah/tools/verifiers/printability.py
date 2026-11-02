@@ -75,6 +75,7 @@ import numpy as np
 import trimesh
 
 from pah.core.model import FailureCertificate
+from pah.design.process import PROCESS_PROFILES, effective_min_wall_mm, profile_for
 from pah.design.api import (
     CODE_BELOW_MIN_WALL,
     CODE_UNSUPPORTED_OVERHANG,
@@ -102,11 +103,10 @@ CODES: tuple[str, ...] = (CODE_BELOW_MIN_WALL, CODE_UNSUPPORTED_OVERHANG)
 #: printed without support, per process (`Unsupported overhang` needs `angle <
 #: limit`). FDM's 45° rule; resin droops a little steeper; a powder bed needs no
 #: support at all; `None` means the concept does not apply (subtractive).
+#: Kept as a derived view of pah.design.process so the two cannot drift: the table
+#: lives with the process, not with the verifier (audit P2-1).
 PROCESS_MIN_ANGLE_FROM_HORIZONTAL_DEG: dict[str, float | None] = {
-    "fdm": 45.0,
-    "sla": 30.0,
-    "sls": 0.0,
-    "cnc": None,
+    name: profile.overhang_deg for name, profile in PROCESS_PROFILES.items()
 }
 
 #: Total area a set of downward faces must cover before it counts as an overhang.
@@ -347,8 +347,19 @@ class Printability:
     def _wall(self, view: DesignView) -> FailureCertificate | None:
         constraints = view.spec.constraints
         window = self._window(view)
+        profile = profile_for(getattr(constraints, "process", ""))
+        if profile is None:
+            # No profile means no thresholds that apply: say so instead of borrowing
+            # FDM's numbers for a process nobody described (audit P2-1).
+            self.last_note = (
+                "wall thickness not evaluated: no process profile for "
+                f"{getattr(constraints, 'process', '')!r}"
+            )
+            return []
+        required_wall = effective_min_wall_mm(constraints, profile)
+
         measured, at, samples = min_wall_mm(view.body, view.insert, window_mm=window)
-        if measured >= constraints.min_wall_mm:
+        if measured >= required_wall:
             return None
         interface = view.spec.interface
         return FailureCertificate(

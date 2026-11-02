@@ -272,7 +272,7 @@ class FitConstraints(_Frozen):
     min_clearance_mm: float = Field(default=0.10, ge=0.0)
     max_clearance_mm: float = Field(default=0.60, ge=0.0)
     min_wall_mm: float = Field(default=1.2, gt=0.0)
-    process: Literal["fdm", "sla", "sls", "cnc"] = "fdm"
+    process: Literal["fdm", "sla", "sls", "mjf", "cnc"] = "fdm"
     target_fit: Literal["slip", "snug", "press"] = "slip"
     #: The build direction in the part's own frame, as a rotation in degrees about
     #: its local origin. `None` = no manufacturing evaluation is being claimed.
