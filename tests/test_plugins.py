@@ -121,7 +121,7 @@ def test_builtin_rows_match_the_frozen_sets_and_do_not_duplicate():
     # checkout ships adds one more row, none of which are contract constants.
     # A new verifier in DESIGN_CODES bumps this number by one, on purpose: the
     # catalogue is meant to be audited when the action space grows.
-    assert len(records) == 20
+    assert len(records) == 21
     assert all(record.source == "builtin" for record in records)
     assert all(record.ok for record in records)
 
@@ -287,7 +287,7 @@ def test_plugins_list_json_names_the_whole_contract(monkeypatch, tmp_path, capsy
     # The eighteen contract rows plus whatever builtin plugin modules this checkout
     # ships — the chain is read from `plugins_builtin`, so a module landing tomorrow
     # does not break this test.
-    assert len(payload["plugins"]) == 20 + len(plugins_builtin.builtin_modules())
+    assert len(payload["plugins"]) == 21 + len(plugins_builtin.builtin_modules())
 
 
 def test_plugins_list_exits_1_when_a_declared_plugin_fails(monkeypatch, tmp_path, capsys):

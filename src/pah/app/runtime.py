@@ -1294,8 +1294,22 @@ class Runtime:
 # --------------------------------------------------------------------------- #
 #: Codes that stop a part from being assembled. A physical failure in this set means
 #: the design as verified cannot be put together, whatever else passed.
+ASSEMBLY_VERIFIERS = (
+    "fit_clearance",
+    "insert_material",
+    "interface_interference",
+    "insertion_path",
+    "physics_settle",
+    # The physics question a decomposed pair can answer: does the joint hold?
+    # `physics_settle` does not apply to a plate on a plate, so without this the
+    # multi-part path had no physics tier at all.
+    "joint_retention",
+)
 ASSEMBLY_BLOCKING_CODES = frozenset(
     {
+        # Nothing blocks the pull-out and gravity points that way: geometry cannot
+        # hold this joint, which is a defect and not a preference.
+        "joint_not_retained",
         "insufficient_material",
         "excess_material",
         "insufficient_clearance",
@@ -1314,8 +1328,7 @@ PRINT_BLOCKING_CODES = frozenset(
 )
 
 #: Verifiers whose absence weakens which claim. Used to say *what was not checked*.
-ASSEMBLY_VERIFIERS = ("fit_clearance", "insert_material", "interface_interference",
-                      "insertion_path", "physics_settle")
+
 PRINT_VERIFIERS = ("printability", "insert_material")
 
 

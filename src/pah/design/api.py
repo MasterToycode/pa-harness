@@ -53,6 +53,7 @@ __all__ = [
     "CODE_INSERTION_PATH_BLOCKED",
     "CODE_INSUFFICIENT_CLEARANCE",
     "CODE_INSUFFICIENT_MATERIAL",
+    "CODE_JOINT_NOT_RETAINED",
     "CODE_JOINT_UNSTABLE",
     "CODE_PHYSICS_ERROR",
     "CODE_UNSUPPORTED_OVERHANG",
@@ -84,6 +85,7 @@ CODE_GEOMETRIC_INTERFERENCE = "geometric_interference"
 CODE_INSERTION_PATH_BLOCKED = "insertion_path_blocked"
 CODE_BELOW_MIN_WALL = "below_min_wall"
 CODE_UNSUPPORTED_OVERHANG = "unsupported_overhang"
+CODE_JOINT_NOT_RETAINED = "joint_not_retained"
 CODE_JOINT_UNSTABLE = "joint_unstable"
 CODE_DYNAMIC_PENETRATION = "dynamic_penetration"
 CODE_PHYSICS_ERROR = "physics_error"
@@ -103,6 +105,9 @@ DESIGN_CODES: dict[str, tuple[str, ...]] = {
     # Global assembly, not a pair: two parts that share no interface can still
     # occupy the same space, and only a whole-assembly pass can see that.
     "global_interference": ("global_interference",),
+    # Geometric retention (form closure or a gravity-carried seat). Only a
+    # pull-out that gravity helps is reported; friction-only is not claimed.
+    "joint_retention": (CODE_JOINT_NOT_RETAINED,),
     "printability": (CODE_BELOW_MIN_WALL, CODE_UNSUPPORTED_OVERHANG),
     "physics_settle": (CODE_JOINT_UNSTABLE, CODE_DYNAMIC_PENETRATION, CODE_PHYSICS_ERROR),
 }

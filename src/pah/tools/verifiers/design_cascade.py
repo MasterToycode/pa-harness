@@ -87,7 +87,8 @@ _PAIR_SKIPS: dict[str, str] = {
     "physics_settle": (
         "not evaluated: the settle model assumes a peg-shaped insert in a bore. A "
         "decomposed part is a plate or a block, so the cavity guard does not describe "
-        "the joint. The check that does — joint retention — is not built yet"
+        "the joint; `joint_retention` is the check that does, and it runs on every "
+        "pair instead"
     ),
 }
 
@@ -113,6 +114,11 @@ def default_registry() -> DesignVerifierRegistry:
     from pah.tools.verifiers.global_interference import GlobalInterference  # noqa: PLC0415
 
     registry.register(GlobalInterference())
+    # The physics question a decomposed pair can actually answer: does the
+    # joint hold? `physics_settle` models a peg in a bore and does not apply.
+    from pah.tools.verifiers.joint_retention import JointRetention  # noqa: PLC0415
+
+    registry.register(JointRetention())
     registry.register(Printability())
     physics = _optional_physics_settle()
     if physics is not None:
