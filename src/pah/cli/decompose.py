@@ -357,9 +357,27 @@ def _decompose(args: argparse.Namespace) -> int:
             for verifier_id in default_registry().ids()
         }
 
-    from pah.app.runtime import _assembly_block, _verdicts, verdict_text  # noqa: PLC0415
+    from pah.app.runtime import (  # noqa: PLC0415
+        _assembly_block,
+        _orientation_block,
+        _verdicts,
+        verdict_text,
+    )
 
-    verdicts = _verdicts(certificates, notes, out / "geometry", sequence=sequence)
+    # The print-orientation column travels with the verdicts (audit P2-2 / C2): a
+    # decomposed run is exactly the case where every piece is judged in a *searched*
+    # pose, so a report without the column would hide the fact that nobody chose it.
+    # `--no-verify` has no cascade to ask, and says `none` rather than inventing one.
+    orientation = (
+        _orientation_block(cascade) if not args.no_verify else {"source": "none"}
+    )
+    verdicts = _verdicts(
+        certificates,
+        notes,
+        out / "geometry",
+        sequence=sequence,
+        orientation=orientation,
+    )
 
     part_rows = {}
     for part in spec.parts:

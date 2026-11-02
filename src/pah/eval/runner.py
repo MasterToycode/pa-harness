@@ -225,18 +225,28 @@ def run_suite(
     return rows
 
 
-def _manufacturing(case: SuiteCase) -> tuple[bool, list[float] | None]:
-    """Was a build orientation declared? `None` means "not evaluated", not "printable".
+def _manufacturing(report: dict[str, Any] | None) -> tuple[bool, list[float] | None]:
+    """Did a manufacturing check run, and in which orientation? `None` = not evaluated.
 
-    The distinction is a contract one (`FitConstraints.print_orientation_deg` and
-    `docs/pah-dev-doc-v1.md` §6): an overhang verdict needs an orientation, and a run
-    that declared none must not be counted as having passed a manufacturing check.
-    Read defensively so an older spec model without the field reads as "not declared".
+    Read off the run's own report (`verdicts.printable.orientation`) rather than off
+    the suite case's spec. Since the orientation search (audit P2-2) an undeclared
+    spec is still evaluated — in a *recommended* pose — so the old "was a pose
+    declared?" test would print `manufacturing_validated: not evaluated` for runs that
+    did evaluate, which is the same overclaim in the opposite direction.
+
+    The three states stay apart: `declared` and `recommended` both mean an overhang
+    rule ran, and the angles come back with them so a reader can see which pose;
+    `none` (a process with no overhang rule, or `--no-verify`), `unknown` (a cell
+    whose report could not be read) and a missing report are all "not evaluated".
     """
-    orientation = getattr(case.spec.constraints, "print_orientation_deg", None)
-    if orientation is None:
+    block = ((report or {}).get("verdicts") or {}).get("printable") or {}
+    orientation = block.get("orientation") or {}
+    if orientation.get("source") not in {"declared", "recommended"}:
         return False, None
-    return True, [float(value) for value in orientation]
+    angles = orientation.get("angles_deg")
+    if angles is None:
+        return False, None
+    return True, [float(value) for value in angles]
 
 
 def _row_from_report(
@@ -245,7 +255,7 @@ def _row_from_report(
     """The comparison columns, read off one episode report."""
     budget = report["budget"]
     counts = report["counts"]
-    manufacturing, orientation = _manufacturing(case)
+    manufacturing, orientation = _manufacturing(report)
     return {
         "case": case.name,
         "policy": policy,
@@ -310,10 +320,14 @@ def _error_row(
         "physical_failures_final": None,
         "kind": case.spec.interface.kind,
         "action_space": case.action_space,
-        "manufacturing_evaluated": _manufacturing(case)[0],
-        "print_orientation_deg": _manufacturing(case)[1],
+        # A cell that produced no episode has no report to read, so nothing was
+        # evaluated — the same answer as a run whose process has no overhang rule.
+        # Unknown is never written as a pass (audit P0-1).
+        "manufacturing_evaluated": False,
+        "print_orientation_deg": None,
         "final_clearance_mm": None,
         "trace": str(run_dir / "trace.jsonl"),
         "report": str(run_dir / "report.json"),
         "error": f"{type(error).__name__}: {error}",
     }
+

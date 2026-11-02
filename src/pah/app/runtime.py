@@ -1263,6 +1263,7 @@ class Runtime:
                 verifier_notes,
                 self.out / "geometry",
                 sequence=getattr(self.verifiers, "sequence", None),
+                orientation=_orientation_block(self.verifiers),
             ),
             "assembly": _assembly_block(
                 certificates, getattr(self.verifiers, "sequence", None)
@@ -1337,6 +1338,57 @@ PRINT_BLOCKING_CODES = frozenset(
 #: Verifiers whose absence weakens which claim. Used to say *what was not checked*.
 
 PRINT_VERIFIERS = ("printability", "insert_material")
+
+
+def _printability_verifier(verifiers: Any) -> Any:
+    """The mounted `printability` verifier, or `None` when it cannot be reached.
+
+    Read through the cascade's registry rather than added to the loop's
+    `LoopVerifiers` port: `check(assembly)` is the whole contract, and only the
+    verifier *instance* knows which build orientation it judged. One level of
+    `_inner` is unwrapped because the runtime may wrap the cascade in its own fault
+    injector (`FaultyCascade`).
+    """
+    cascade = getattr(verifiers, "_inner", verifiers)
+    registry = getattr(cascade, "registry", None)
+    getter = getattr(registry, "get", None)
+    if getter is None:
+        return None
+    try:
+        return getter("printability")
+    except Exception:  # a registry without this verifier is "unknown", not a crash
+        return None
+
+
+def _orientation_block(verifiers: Any) -> dict[str, Any]:
+    """The build-orientation column: declared, recommended, or honestly unknown.
+
+    Two columns, never merged (audit P2-2 / C2). A person who declared a pose and a
+    search that filled the gap are different evidence: one is a decision, the other
+    is a suggestion, and a report that prints one "orientation" number for both is
+    how a guess starts reading like a choice.
+
+    A cascade this function cannot reach reports `source: unknown`. Inventing an
+    orientation here would be the exact overclaim the column exists to prevent.
+
+    `bridged_ceilings` carries what the bridge rule let pass (audit P2-2 ruling): a
+    run with no overhang finding and no note would otherwise be indistinguishable
+    from one where nobody looked at a 6.4 mm cavity ceiling. It is the explanation
+    for a clean result, not a finding of its own.
+    """
+    verifier = _printability_verifier(verifiers)
+    source = getattr(verifier, "orientation_source", None)
+    if source not in {"declared", "recommended", "none"}:
+        return {"source": "unknown"}
+    angles = getattr(verifier, "orientation_deg", None)
+    top = getattr(verifier, "orientation_top", ()) or ()
+    bridged = getattr(verifier, "bridged_overhangs", ()) or ()
+    return {
+        "source": source,
+        "angles_deg": [round(float(value), 3) for value in angles] if angles else None,
+        "top": [row.as_dict() for row in top],
+        "bridged_ceilings": [dict(row) for row in bridged],
+    }
 
 
 def _did_not_run(verifiers: Sequence[str], notes: Mapping[str, str]) -> list[str]:
@@ -1458,6 +1510,7 @@ def _verdicts(
     notes: Mapping[str, str],
     geometry_dir: Path,
     sequence: Any = None,
+    orientation: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """The two questions a user actually asks, answered without overclaiming.
 
@@ -1478,6 +1531,12 @@ def _verdicts(
     the same, and neither may `validated` claim `full` when the list is non-empty.
     Watertightness is measured on the exported STLs, because the file that goes to
     the slicer is the thing that has to be closed, not the in-memory mesh.
+
+    `orientation` is the printable block's third column (audit P2-2 / C2): which way
+    up the part was judged, and whether the spec declared that pose or a search
+    recommended it. It is passed in rather than derived here because the answer
+    lives on the verifier instance, and an absent one says `source: unknown` instead
+    of guessing +Z.
     """
     environment = [cert for cert in certificates if cert.family == "environment"]
     unknown = bool(environment)
@@ -1527,6 +1586,8 @@ def _verdicts(
         "printable": {
             **state(print_blocking, print_missing, closed),
             "watertight": watertight,
+            # Declared vs recommended, never merged: see `_orientation_block`.
+            "orientation": dict(orientation) if orientation else {"source": "unknown"},
         },
         "environment_errors": [
             {

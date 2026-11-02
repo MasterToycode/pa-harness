@@ -379,14 +379,27 @@ def test_a_bed_face_is_not_an_overhang():
         assert bed_faces.any(), "the fixture must actually have a bed face"
 
 
-def test_no_declared_orientation_means_no_overhang_claim():
-    """`None` is not "printable": it is "no manufacturing claim was made"."""
+def test_no_declared_orientation_is_searched_not_skipped():
+    """No declaration now means "recommend one", not "no manufacturing claim" (P2-2).
+
+    The old contract made an undeclared orientation *unevaluated*; a decomposition
+    prints every piece in its own best pose, so that left every multi-part run with
+    a hole in its evidence. The verifier searches the 24 face-down poses instead and
+    records that the pose was recommended rather than chosen by a person.
+    """
     view = fixtures.standard_fixture()
     verifier = Printability()
 
     assert view.spec.constraints.print_orientation_deg is None
-    assert verifier.check(view) == []
-    assert verifier.overhang_evaluated is False
+    certificates = verifier.check(view)
+
+    assert verifier.overhang_evaluated is True
+    assert verifier.orientation_source == "recommended"
+    assert verifier.recommendation is not None
+    assert verifier.orientation_deg == verifier.recommendation.angles
+    assert verifier.orientation_top[0] is verifier.recommendation
+    assert verifier.last_note == ""  # a recommendation is an answer, not a boundary
+    assert certificates == []
 
 
 def test_a_declared_orientation_is_evaluated():
@@ -394,6 +407,7 @@ def test_a_declared_orientation_is_evaluated():
     certificates = verifier.check(fixtures.pocket_fixture())
 
     assert verifier.overhang_evaluated is True
+    assert verifier.orientation_source == "declared"
     assert codes_of(certificates) == ["unsupported_overhang"]
 
 
@@ -418,32 +432,44 @@ def test_the_print_orientation_decides_whether_a_face_overhangs():
 
 
 def test_the_overhang_note_explains_why_nothing_was_evaluated():
-    """`not evaluated` has to be legible, or a reader will read it as `printable`."""
+    """`not evaluated` survives only where there is no rule to apply a pose to."""
     verifier = Printability()
 
     verifier.check(fixtures.standard_fixture())
-    assert verifier.overhang_evaluated is False
-    assert "overhang not evaluated" in verifier.last_note
-    assert "print_orientation_deg" in verifier.last_note
-
-    verifier.check(fixtures.pocket_fixture())
     assert verifier.overhang_evaluated is True
-    assert verifier.last_note == ""
+    assert verifier.last_note == ""  # a recommended pose is still an evaluation
+
+    # Subtractive: an orientation would have nothing to judge, so this is a boundary.
+    view = fixtures.pocket_fixture()
+    cnc = view.spec.edit(
+        constraints=fixtures.AS_DESIGNED_PRINT_BAND.model_copy(update={"process": "cnc"})
+    )
+    verifier.check(DesignView(spec=cnc, meshes=dict(view.meshes)))
+    assert verifier.overhang_evaluated is False
+    assert verifier.orientation_source == "none"
+    assert "overhang not evaluated" in verifier.last_note
+    assert "subtractive" in verifier.last_note
 
 
 def test_the_cascade_aggregates_the_verifiers_notes(tmp_path):
     """The report's `verifiers.notes` channel: a boundary, not a failure."""
-    cascade, assembly, _ = _cascade_over(fixtures.standard_fixture(), tmp_path)
-    certificates = cascade.check(assembly)
-
+    # A recommended orientation is an answer, so printability leaves no note.
+    searched, searched_assembly, _ = _cascade_over(fixtures.standard_fixture(), tmp_path)
+    certificates = searched.check(searched_assembly)
     assert certificates == []
-    assert set(cascade.notes) == {"printability"}
-    assert "not evaluated" in cascade.notes["printability"]
+    assert "printability" not in searched.notes
 
-    # A design that declares its build orientation ran the rule: no note to make.
-    declared, declared_assembly, _ = _cascade_over(fixtures.pocket_fixture(), tmp_path)
-    declared.check(declared_assembly)
-    assert "printability" not in declared.notes
+    # A process with no overhang rule does leave one, and it reaches the report.
+    view = fixtures.pocket_fixture()
+    cnc = view.spec.edit(
+        constraints=fixtures.AS_DESIGNED_PRINT_BAND.model_copy(update={"process": "cnc"})
+    )
+    bounded, bounded_assembly, _ = _cascade_over(
+        DesignView(spec=cnc, meshes=dict(view.meshes)), tmp_path
+    )
+    bounded.check(bounded_assembly)
+    assert "printability" in bounded.notes
+    assert "not evaluated" in bounded.notes["printability"]
 
 
 def test_the_process_decides_whether_overhangs_are_a_limit():

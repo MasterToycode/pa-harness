@@ -13,6 +13,21 @@ the process resolves (a peg, a rib); `tolerance_mm` is what a fit can be trusted
 `supports` says whether a downward face needs support at all, which is why the overhang
 angle is `None` for a process that has no such concept.
 
+`bridge_mm` is a *span*, not an angle
+-------------------------------------
+Every additive process except resin can print a horizontal ceiling over a narrow
+cavity without support: the first layer after the gap is extruded as a bridge, and
+it holds because both ends are anchored. So "is this ceiling unsupported?" is two
+questions, not one — how shallow is the face (the overhang angle) **and** how wide
+is the opening it has to cross (the bridge span). The angle alone condemns a
+0.3 mm-wide step inside a 6.4 mm bore, which any FDM machine prints as part of the
+wall; measured 2026-11-02 on a three-part decomposition, 6.148 mm2 per part, and it
+made every decomposed piece "unprintable" for a feature no operator can act on.
+
+`bridge_mm` is therefore the widest unsupported span the process crosses without
+support. `None` means the question does not arise: a powder bed already holds the
+part up, and a subtractive process has no layers to sag.
+
 The rule the verifier follows
 -----------------------------
 The effective wall floor is **the stricter of** the task's `FitConstraints.min_wall_mm`
@@ -40,6 +55,11 @@ class ProcessProfile:
     #: Steepest downward face that still prints without support, measured from the
     #: horizontal. `None` means the concept does not apply (subtractive processes).
     overhang_deg: float | None
+    #: Widest unsupported **span** the process crosses without support, in mm: a
+    #: horizontal ceiling over a cavity narrower than this is bridged by the first
+    #: layer, so it is not an overhang. `None` = the question does not arise (powder
+    #: bed holds the part; subtractive has no layers). Not an angle.
+    bridge_mm: float | None
     layer_mm: float
     #: What a fit may be trusted to, per side.
     tolerance_mm: float
@@ -57,6 +77,9 @@ PROCESS_PROFILES: dict[str, ProcessProfile] = {
         min_wall_mm=1.2,
         min_feature_mm=1.2,
         overhang_deg=45.0,
+        # 8 mm is a conservative hobby-shop bridge on a 0.4 mm nozzle: a 6.4 mm bore's
+        # ceiling prints, a 10 mm span is where supports start to earn their keep.
+        bridge_mm=8.0,
         layer_mm=0.2,
         tolerance_mm=0.2,
         supports=True,
@@ -67,6 +90,10 @@ PROCESS_PROFILES: dict[str, ProcessProfile] = {
         min_wall_mm=0.4,
         min_feature_mm=0.4,
         overhang_deg=30.0,
+        # Resin does not bridge: a ceiling over any cavity is printed on supports or
+        # it sags into the vat. Zero, not None — the check still runs, it just never
+        # forgives a span.
+        bridge_mm=0.0,
         layer_mm=0.05,
         tolerance_mm=0.1,
         supports=True,
@@ -77,6 +104,7 @@ PROCESS_PROFILES: dict[str, ProcessProfile] = {
         min_wall_mm=0.7,
         min_feature_mm=0.7,
         overhang_deg=0.0,
+        bridge_mm=None,
         layer_mm=0.1,
         tolerance_mm=0.15,
         supports=False,
@@ -87,6 +115,7 @@ PROCESS_PROFILES: dict[str, ProcessProfile] = {
         min_wall_mm=0.9,
         min_feature_mm=0.9,
         overhang_deg=0.0,
+        bridge_mm=None,
         layer_mm=0.08,
         tolerance_mm=0.15,
         supports=False,
@@ -97,6 +126,7 @@ PROCESS_PROFILES: dict[str, ProcessProfile] = {
         min_wall_mm=0.8,
         min_feature_mm=1.0,
         overhang_deg=None,
+        bridge_mm=None,
         layer_mm=0.0,
         tolerance_mm=0.05,
         supports=False,
