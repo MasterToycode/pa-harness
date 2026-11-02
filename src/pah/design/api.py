@@ -45,6 +45,7 @@ from pah.design.spec import DesignSpec, Vec3
 from pah.tools.verifiers.base import CostClass, VerifierDisabled, VerifierSpec
 
 __all__ = [
+    "CODE_APPROACH_NOT_CLEAR",
     "CODE_BELOW_MIN_WALL",
     "CODE_DYNAMIC_PENETRATION",
     "CODE_EXCESSIVE_CLEARANCE",
@@ -83,6 +84,7 @@ CODE_INSUFFICIENT_MATERIAL = "insufficient_material"
 CODE_EXCESS_MATERIAL = "excess_material"
 CODE_GEOMETRIC_INTERFERENCE = "geometric_interference"
 CODE_INSERTION_PATH_BLOCKED = "insertion_path_blocked"
+CODE_APPROACH_NOT_CLEAR = "approach_not_clear"
 CODE_BELOW_MIN_WALL = "below_min_wall"
 CODE_UNSUPPORTED_OVERHANG = "unsupported_overhang"
 CODE_JOINT_NOT_RETAINED = "joint_not_retained"
@@ -101,7 +103,7 @@ DESIGN_CODES: dict[str, tuple[str, ...]] = {
     # perfect outer surface, so every later verifier agrees with it.
     "insert_material": (CODE_INSUFFICIENT_MATERIAL, CODE_EXCESS_MATERIAL),
     "interface_interference": (CODE_GEOMETRIC_INTERFERENCE,),
-    "insertion_path": (CODE_INSERTION_PATH_BLOCKED,),
+    "insertion_path": (CODE_INSERTION_PATH_BLOCKED, CODE_APPROACH_NOT_CLEAR),
     # Global assembly, not a pair: two parts that share no interface can still
     # occupy the same space, and only a whole-assembly pass can see that.
     "global_interference": ("global_interference",),
