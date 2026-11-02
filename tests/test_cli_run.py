@@ -147,7 +147,7 @@ def test_the_round_budget_stops_at_exactly_three(monkeypatch, tmp_path):
     assert report["episode"]["reason"] == "budget spent"
     assert len(report["rounds"]) == 3
     assert [row["index"] for row in report["rounds"]] == [0, 1, 2]
-    assert report["budget"]["rounds"] == {"budget": 3, "used": 3, "left": 0}
+    assert report["budget"]["rounds"] == {"budget": 3, "used": 3, "left": 0, "overrun": 0}
     hashes = report["trace"]["replay_hashes"]
     assert len(hashes) == 3 and len(set(hashes)) == 3
 

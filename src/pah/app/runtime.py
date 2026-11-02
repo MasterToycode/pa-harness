@@ -1111,21 +1111,7 @@ class Runtime:
             },
             "episode": {"verdict": verdict, "reason": reason, "rounds": len(rounds)},
             "budget": {
-                "rounds": {
-                    "budget": budget.rounds,
-                    "used": used.rounds,
-                    "left": max(0, budget.rounds - used.rounds),
-                },
-                "geom_calls": {
-                    "budget": budget.geom_calls,
-                    "charged": used.geom_calls,
-                    "left": max(0, budget.geom_calls - used.geom_calls),
-                },
-                "sim_calls": {
-                    "budget": budget.sim_calls,
-                    "charged": used.sim_calls,
-                    "left": max(0, budget.sim_calls - used.sim_calls),
-                },
+                **budget_block(budget, used),
                 # The cascade's meter, kept beside the ledger rather than inside it:
                 # the ledger is what the engine enforced, the meter is what the tools
                 # actually ran.
@@ -1299,6 +1285,34 @@ def _did_not_run(verifiers: Sequence[str], notes: Mapping[str, str]) -> list[str
         if verifier in keys
         or any(key.endswith(f"/{verifier}") for key in keys)
     )
+
+
+def budget_block(budget, used) -> dict[str, Any]:
+    """The report's budget section, with the overspend made visible.
+
+    `left` is clamped at 0 on purpose — a negative remainder is not a number anyone
+    can act on — which is exactly why `overrun` is reported separately: the ledger
+    allows the round that overspends and refuses the next one, so a summary that only
+    showed `left: 0` could not tell "spent the last call" from "spent three more than
+    it had". Audit P0-5.
+    """
+    def one(name: str, limit: int, charged: int, used_key: str) -> dict[str, int]:
+        return {
+            "budget": limit,
+            used_key: charged,
+            "left": max(0, limit - charged),
+            "overrun": max(0, charged - limit),
+        }
+
+    rounds = one("rounds", budget.rounds, used.rounds, "used")
+    geom = one("geom_calls", budget.geom_calls, used.geom_calls, "charged")
+    sim = one("sim_calls", budget.sim_calls, used.sim_calls, "charged")
+    return {
+        "rounds": rounds,
+        "geom_calls": geom,
+        "sim_calls": sim,
+        "overrun_total": rounds["overrun"] + geom["overrun"] + sim["overrun"],
+    }
 
 
 def verdict_text(entry: Mapping[str, Any] | None) -> str:

@@ -256,6 +256,12 @@ def _row_from_report(
         "rounds_budget": budget["rounds"]["budget"],
         "geom_calls_charged": budget["geom_calls"]["charged"],
         "sim_calls_charged": budget["sim_calls"]["charged"],
+        # Overrun is a separate column, not left gone negative: the ledger permits
+        # one overspending round and refuses the next, so equal-budget cells are only
+        # comparable when you can filter out the ones that spent more than they had.
+        "budget_overrun_total": budget.get("overrun_total", 0),
+        "geom_overrun": budget["geom_calls"].get("overrun", 0),
+        "sim_overrun": budget["sim_calls"].get("overrun", 0),
         "verifier_geom_calls": budget["verifier_spend"]["geom_calls"],
         "verifier_sim_calls": budget["verifier_spend"]["sim_calls"],
         "environment_errors": counts["environment_errors"],
@@ -292,6 +298,9 @@ def _error_row(
         "rounds_budget": None,
         "geom_calls_charged": None,
         "sim_calls_charged": None,
+        "budget_overrun_total": None,
+        "geom_overrun": None,
+        "sim_overrun": None,
         "verifier_geom_calls": None,
         "verifier_sim_calls": None,
         "environment_errors": None,

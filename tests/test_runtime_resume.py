@@ -62,7 +62,7 @@ def test_the_budget_stops_at_exactly_the_requested_rounds(monkeypatch, tmp_path,
     assert report["episode"]["verdict"] == "exhausted"
     assert report["episode"]["reason"] == "budget spent"
     assert len(report["rounds"]) == rounds
-    assert report["budget"]["rounds"] == {"budget": rounds, "used": rounds, "left": 0}
+    assert report["budget"]["rounds"] == {"budget": rounds, "used": rounds, "left": 0, "overrun": 0}
     assert report["ticket"]["outcome"] == "exhausted"
 
 
@@ -108,7 +108,7 @@ def test_a_resume_keeps_the_budget_the_ticket_was_opened_with(monkeypatch, tmp_p
     assert first["budget"]["rounds"]["budget"] == 3
 
     resumed = run_episode(tmp_path / "ep", spec, rounds=99, resume=True)
-    assert resumed["budget"]["rounds"] == {"budget": 3, "used": 3, "left": 0}
+    assert resumed["budget"]["rounds"] == {"budget": 3, "used": 3, "left": 0, "overrun": 0}
     assert any("keeps the recorded budget" in note for note in resumed["notes"])
 
 
