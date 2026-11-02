@@ -210,6 +210,11 @@ class DesignVerifierCascade:
         return self._spent
 
     @property
+    def identity(self) -> dict:
+        """What the materialiser declared about itself, for the report's reproducibility claim."""
+        return dict(self._identity())
+
+    @property
     def generation(self) -> dict | None:
         """The last generation request this cascade made (key, generator, output hashes).
 
@@ -516,6 +521,15 @@ class DesignVerifierCascade:
         cached = self._designs.get(key)
         if cached is not None:
             return cached
+        # Cross-process reuse: a resumed episode builds a fresh cascade, and without
+        # this the same request would be paid for again (audit P1-5 / §5.4).
+        if self.root is not None:
+            from pah.design import generation_cache  # noqa: PLC0415
+
+            reused = generation_cache.load(self.root, key)
+            if reused is not None:
+                self._designs[key] = reused
+                return reused  # no charge: nobody materialised anything
         if self.root is None:
             raise RuntimeError(
                 f"assembly for spec {spec.spec_id!r} carries no geometry paths and "
@@ -524,6 +538,10 @@ class DesignVerifierCascade:
         materialize = self._materializer or _default_materializer()
         design = materialize(spec, self.root)
         design = self._stamped(spec, design, key)
+        if self.root is not None:
+            from pah.design import generation_cache  # noqa: PLC0415
+
+            generation_cache.save(self.root, key, design)
         self._designs[key] = design
         # One geometry call per materialisation, however many parts it built: the
         # charge is for "the adapter had to touch geometry", which is what makes an

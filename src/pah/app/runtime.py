@@ -1141,6 +1141,13 @@ class Runtime:
                 # but silently unused — the exact claim a generator swap must keep
                 # honest.
                 "generator": self.generator_label,
+                # Whether the same request can be expected to yield the same mesh. A
+                # diffusion service samples; equal-budget comparisons across strategies
+                # must stratify on this or they measure sampling variance (audit P1-5).
+                "deterministic_generator": not bool(
+                    getattr(self.verifiers, "identity", {}).get("non_deterministic", False)
+                ),
+                "generator_identity": getattr(self.verifiers, "identity", {}),
             },
             "ticket": {
                 "id": ticket.id,
