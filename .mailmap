@@ -1,0 +1,10 @@
+# Commit attribution for the public repository.
+#
+# Why this file exists: the harness was built with the placeholder identity
+# `PAH Dev <pah@localhost>`, which is not linked to any GitHub account. Without a
+# mailmap, every commit counts towards a ghost contributor and the people who did the
+# work show up as "0 contributions". GitHub reads this file to attribute commits.
+#
+# Format: Real Name <primary@email> <alias@email>
+
+Junze Ye <128799728+MasterToycode@users.noreply.github.com> <pah@localhost>
