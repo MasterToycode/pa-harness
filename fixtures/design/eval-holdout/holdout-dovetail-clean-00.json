@@ -1,0 +1,85 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.22,
+    "min_clearance_mm": 0.06,
+    "min_wall_mm": 1.0,
+    "print_orientation_deg": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "process": "fdm",
+    "target_fit": "slip"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "dovetail",
+      "params": {
+        "angle_deg": 16.1,
+        "approach_mm": 17.471,
+        "clearance_mm": 0.119,
+        "depth_mm": 5.53,
+        "engage_mm": 13.576,
+        "width_mm": 10.92
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        70.0,
+        45.0,
+        14.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        21.424,
+        0.0,
+        7.0
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        20.0,
+        30.0,
+        12.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "clearance inside the declared band and wall above min_wall_mm",
+    "generator": "scripts/make_holdout.py",
+    "intent": "clean",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout clean case #0: a dovetail joint on a 70x45x14 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-dovetail-clean-00"
+}

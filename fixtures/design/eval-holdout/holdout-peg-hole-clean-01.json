@@ -1,0 +1,83 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.22,
+    "min_clearance_mm": 0.06,
+    "min_wall_mm": 1.5,
+    "print_orientation_deg": null,
+    "process": "fdm",
+    "target_fit": "slip"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "peg_hole",
+      "params": {
+        "approach_mm": 9.82,
+        "d_hole_mm": 7.759,
+        "d_peg_mm": 7.427,
+        "engage_mm": 5.938,
+        "feature_xy_mm": [
+          -2.067,
+          0.007
+        ]
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        55.0,
+        35.0,
+        16.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        -2.067,
+        0.007,
+        2.0620000000000003
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        12.0,
+        12.0,
+        22.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "clearance inside the declared band and wall above min_wall_mm",
+    "generator": "scripts/make_holdout.py",
+    "intent": "clean",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout clean case #1: a peg hole joint on a 55x35x16 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-peg-hole-clean-01"
+}

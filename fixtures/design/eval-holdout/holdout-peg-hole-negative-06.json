@@ -1,0 +1,87 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.22,
+    "min_clearance_mm": 0.06,
+    "min_wall_mm": 2.0,
+    "print_orientation_deg": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "process": "sla",
+    "target_fit": "slip"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "peg_hole",
+      "params": {
+        "approach_mm": 11.296,
+        "d_hole_mm": 10.563,
+        "d_peg_mm": 10.833,
+        "engage_mm": 5.0,
+        "feature_xy_mm": [
+          -3.692,
+          0.938
+        ]
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        50.0,
+        35.0,
+        10.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        -3.692,
+        0.938,
+        0.0
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        12.0,
+        12.0,
+        22.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "deliberate negative defect; the rest of the design is ordinary",
+    "generator": "scripts/make_holdout.py",
+    "intent": "negative",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout negative case #6: a peg hole joint on a 50x35x10 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-peg-hole-negative-06"
+}

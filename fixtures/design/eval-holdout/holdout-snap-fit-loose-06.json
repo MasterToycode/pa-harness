@@ -1,0 +1,86 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.35,
+    "min_clearance_mm": 0.12,
+    "min_wall_mm": 2.0,
+    "print_orientation_deg": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "process": "sla",
+    "target_fit": "slip"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "snap_fit",
+      "params": {
+        "approach_mm": 12.842,
+        "beam_len_mm": 13.181,
+        "beam_thk_mm": 1.727,
+        "engage_mm": 5.281,
+        "hook_h_mm": 1.597,
+        "hook_w_mm": 4.698,
+        "slot_w_mm": 5.752
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        70.0,
+        45.0,
+        14.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.12200000000000033
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        8.0,
+        8.0,
+        14.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "deliberate loose defect; the rest of the design is ordinary",
+    "generator": "scripts/make_holdout.py",
+    "intent": "loose",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout loose case #6: a snap fit joint on a 70x45x14 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-snap-fit-loose-06"
+}

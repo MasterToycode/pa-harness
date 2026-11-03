@@ -1,11 +1,18 @@
 """`pah eval` — equal-budget comparison of decision policies on a design suite.
 
     pah eval --suite fixtures/design --policies rule,random --rounds 3 --out runs/eval
+    pah eval --suite holdout --policies rule,random --rounds 3 --out runs/eval-holdout
+    pah eval --suite dev,holdout --policies rule,case_memory --rounds 3 --out runs/eval
 
 Writes two files and prints the second:
 
     <out>/results.jsonl   one raw cell per line (see `eval/runner.py`)
-    <out>/summary.md      the per-policy and per-case tables (see `eval/report.py`)
+    <out>/summary.md      the per-suite and per-policy tables (see `eval/report.py`)
+
+A suite is one directory of `DesignSpec` JSON files. `dev` and `holdout` are named
+aliases (`fixtures/design` and its `eval-holdout/` subdirectory); naming two suites
+runs both in one command and the summary prints them as **separate blocks**, because
+a holdout result folded into a demo result is no longer a holdout result.
 
 Everything about *what* is compared and *how the columns are kept apart* lives in
 `pah.eval.runner` and `pah.eval.report`; this module owns the argument surface, the
@@ -24,10 +31,20 @@ import argparse
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 from pah.cli.main import EXIT_CRASH, EXIT_NO, EXIT_OK
 
-__all__ = ["add_parser", "parse_policies"]
+__all__ = ["add_parser", "parse_policies", "resolve_suites"]
+
+#: Named suites. `dev` is the four demos + stress fixtures people tune against;
+#: `holdout` is the evaluation set the audit (P3-3) requires. Resolved against the
+#: repository root, so `pah eval --suite holdout` works from any directory.
+SUITE_ALIASES: dict[str, str] = {
+    "dev": "fixtures/design",
+    "holdout": "fixtures/design/eval-holdout",
+    "stress": "fixtures/design/stress",
+}
 
 
 def add_parser(groups: argparse._SubParsersAction) -> None:
@@ -36,7 +53,10 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     evaluate.add_argument(
         "--suite",
         required=True,
-        help="a directory of DesignSpec JSON files, or one such file",
+        help=(
+            "one or more comma-separated suites: a directory of DesignSpec JSON files, "
+            "or a name (`dev`, `holdout`, `stress`)"
+        ),
     )
     evaluate.add_argument(
         "--policies",
@@ -45,6 +65,12 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     )
     evaluate.add_argument(
         "--rounds", type=int, default=3, help="episode budget given to every cell"
+    )
+    evaluate.add_argument(
+        "--cases",
+        type=int,
+        default=None,
+        help="run only the first N cases of each suite (a cheap smoke subset)",
     )
     evaluate.add_argument("--out", required=True, help="directory for runs/, results.jsonl, summary.md")
     evaluate.add_argument("--config", default=None, help="pah.toml (plugins and LLM providers)")
@@ -73,6 +99,29 @@ def parse_policies(text: str) -> list[str]:
     return seen
 
 
+def resolve_suites(text: str) -> list[tuple[str, Path]]:
+    """`"dev,holdout"` (or paths) -> `[(label, path), ...]`, order preserved.
+
+    The label is what the summary prints. An alias keeps its alias (`holdout`), while
+    an explicit path gets the directory's name — a report that said `suite:
+    eval-holdout` for one invocation and `suite: holdout` for another would make two
+    runs look like two different experiments.
+    """
+    root = Path(__file__).resolve().parents[3]
+    resolved: list[tuple[str, Path]] = []
+    for entry in (item.strip() for item in text.split(",")):
+        if not entry:
+            continue
+        alias = SUITE_ALIASES.get(entry)
+        if alias is not None:
+            resolved.append((entry, root / alias))
+            continue
+        path = Path(entry)
+        label = path.name if path.is_dir() else path.parent.name
+        resolved.append((label, path))
+    return resolved
+
+
 def _eval(args: argparse.Namespace) -> int:
     """Loads the suite, runs every cell, writes the two artefacts, prints the summary."""
     from pah.app.providers import (  # noqa: PLC0415 - only paid configs need it
@@ -87,6 +136,9 @@ def _eval(args: argparse.Namespace) -> int:
     policies = parse_policies(args.policies)
     if not policies:
         print("pah eval: --policies is empty; name at least one policy")
+        return EXIT_CRASH
+    if args.cases is not None and args.cases < 1:
+        print("pah eval: --cases must be at least 1")
         return EXIT_CRASH
     if args.allow_paid_gen:
         # One authorisation for the whole comparison: every cell builds its own
@@ -112,14 +164,26 @@ def _eval(args: argparse.Namespace) -> int:
             print(f"pah eval: {error}")
             return EXIT_CRASH
 
-    try:
-        cases, problems = eval_runner.load_suite(args.suite)
-    except FileNotFoundError as error:
-        print(f"pah eval: {error}")
+    suites = resolve_suites(args.suite)
+    if not suites:
+        print(f"pah eval: --suite {args.suite!r} names no suite")
         return EXIT_CRASH
-    except OSError as error:
-        print(f"pah eval: cannot read {args.suite}: {error}")
-        return EXIT_CRASH
+    cases: list[Any] = []
+    problems: list[Any] = []
+    for label, path in suites:
+        try:
+            suite_cases, suite_problems = eval_runner.load_suite(path, label=label)
+        except FileNotFoundError as error:
+            print(f"pah eval: {error}")
+            return EXIT_CRASH
+        except OSError as error:
+            print(f"pah eval: cannot read {path}: {error}")
+            return EXIT_CRASH
+        if args.cases is not None:
+            suite_cases = suite_cases[: args.cases]
+        print(f"pah eval: suite `{label}` — {len(suite_cases)} case(s) from {path}")
+        cases.extend(suite_cases)
+        problems.extend(suite_problems)
 
     for problem in problems:
         print(f"pah eval: skipping {problem.path}: {problem.error}")

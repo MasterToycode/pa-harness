@@ -1,0 +1,86 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.22,
+    "min_clearance_mm": 0.06,
+    "min_wall_mm": 2.0,
+    "print_orientation_deg": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "process": "sla",
+    "target_fit": "slip"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "snap_fit",
+      "params": {
+        "approach_mm": 13.009,
+        "beam_len_mm": 11.415,
+        "beam_thk_mm": 1.573,
+        "engage_mm": 6.665,
+        "hook_h_mm": 1.094,
+        "hook_w_mm": 4.874,
+        "slot_w_mm": 5.252
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        70.0,
+        45.0,
+        14.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        -0.7590000000000001
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        8.0,
+        8.0,
+        14.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "clearance inside the declared band and wall above min_wall_mm",
+    "generator": "scripts/make_holdout.py",
+    "intent": "clean",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout clean case #2: a snap fit joint on a 70x45x14 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-snap-fit-clean-02"
+}

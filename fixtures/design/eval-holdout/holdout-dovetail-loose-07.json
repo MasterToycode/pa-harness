@@ -1,0 +1,81 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.65,
+    "min_clearance_mm": 0.3,
+    "min_wall_mm": 2.0,
+    "print_orientation_deg": null,
+    "process": "mjf",
+    "target_fit": "snug"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "dovetail",
+      "params": {
+        "angle_deg": 15.994,
+        "approach_mm": 23.31,
+        "clearance_mm": 0.769,
+        "depth_mm": 4.514,
+        "engage_mm": 18.945,
+        "width_mm": 13.921
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        45.0,
+        30.0,
+        8.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        3.5549999999999997,
+        0.0,
+        4.0
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        20.0,
+        30.0,
+        12.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "deliberate loose defect; the rest of the design is ordinary",
+    "generator": "scripts/make_holdout.py",
+    "intent": "loose",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout loose case #7: a dovetail joint on a 45x30x8 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-dovetail-loose-07"
+}

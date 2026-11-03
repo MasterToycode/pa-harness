@@ -1,0 +1,85 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.22,
+    "min_clearance_mm": 0.06,
+    "min_wall_mm": 2.0,
+    "print_orientation_deg": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "process": "fdm",
+    "target_fit": "slip"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "dovetail",
+      "params": {
+        "angle_deg": 16.161,
+        "approach_mm": 20.798,
+        "clearance_mm": 0.012,
+        "depth_mm": 6.177,
+        "engage_mm": 18.249,
+        "width_mm": 9.908
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        50.0,
+        35.0,
+        10.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        6.751000000000001,
+        0.0,
+        5.0
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        20.0,
+        30.0,
+        12.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "deliberate tight defect; the rest of the design is ordinary",
+    "generator": "scripts/make_holdout.py",
+    "intent": "tight",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout tight case #4: a dovetail joint on a 50x35x10 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-dovetail-tight-04"
+}

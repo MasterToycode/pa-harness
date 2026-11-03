@@ -1,0 +1,86 @@
+{
+  "api_version": "1",
+  "constraints": {
+    "max_clearance_mm": 0.5,
+    "min_clearance_mm": 0.2,
+    "min_wall_mm": 2.0,
+    "print_orientation_deg": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "process": "fdm",
+    "target_fit": "slip"
+  },
+  "interfaces": [
+    {
+      "a": "body",
+      "b": "insert",
+      "id": "iface_0",
+      "kind": "snap_fit",
+      "params": {
+        "approach_mm": 11.634,
+        "beam_len_mm": 10.696,
+        "beam_thk_mm": 1.22,
+        "engage_mm": 5.575,
+        "hook_h_mm": 1.072,
+        "hook_w_mm": 4.278,
+        "slot_w_mm": 4.568
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "body",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "role": "body",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        60.0,
+        40.0,
+        12.0
+      ],
+      "source": ""
+    },
+    {
+      "id": "insert",
+      "material": "PLA",
+      "pose_mm": [
+        0.0,
+        0.0,
+        -0.6470000000000002
+      ],
+      "role": "insert",
+      "rot_deg": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "size_mm": [
+        8.0,
+        8.0,
+        14.0
+      ],
+      "source": ""
+    }
+  ],
+  "provenance": {
+    "construction": "deliberate tight defect; the rest of the design is ordinary",
+    "generator": "scripts/make_holdout.py",
+    "intent": "tight",
+    "seed": 20261103,
+    "suite": "eval-holdout — evaluation only, never tuning"
+  },
+  "requirement": "holdout tight case #4: a snap fit joint on a 60x40x12 mm plate",
+  "revision": 1,
+  "spec_id": "holdout-snap-fit-tight-04"
+}

@@ -65,6 +65,10 @@ class SuiteCase:
     name: str
     spec: DesignSpec
     path: Path
+    #: The suite this case belongs to (`dev`, `holdout`, a stress directory). Carried
+    #: on the case because the report must never merge a tuning set and an evaluation
+    #: set into one success rate; a row that lost its suite could only be merged.
+    suite: str = ""
     #: How many of the seven operators this design's connector kind can express.
     #: `design_ops.expressible` owns the answer; `None` means T3 is not importable
     #: yet and the report says "unknown" instead of inventing a number.
@@ -88,8 +92,16 @@ RunFn = Callable[[SuiteCase, str, Path, int], dict[str, Any]]
 # --------------------------------------------------------------------------- #
 # Loading
 # --------------------------------------------------------------------------- #
-def load_suite(suite: str | Path) -> tuple[list[SuiteCase], list[CaseProblem]]:
-    """Every `*.json` under `suite` as a `DesignSpec`, plus the files that were not.
+def load_suite(
+    suite: str | Path, *, label: str | None = None
+) -> tuple[list[SuiteCase], list[CaseProblem]]:
+    """Every `*.json` **in one directory level** of `suite`, plus the files that failed.
+
+    Why not recursive any more: a holdout suite lives at
+    `fixtures/design/eval-holdout/`, and a recursive load of the development suite
+    would have silently folded the evaluation cases into the tuning set — the exact
+    merge the audit (P3-3) is about. One directory is one suite; a nested suite is
+    named explicitly (`--suite holdout`, or its path).
 
     Two layouts are accepted on purpose. A file may be the spec itself (what
     `pah design new` writes) or wrap it as `{"spec": {...}}` (what a fixture that also
@@ -100,7 +112,8 @@ def load_suite(suite: str | Path) -> tuple[list[SuiteCase], list[CaseProblem]]:
     path = Path(suite)
     if not path.exists():
         raise FileNotFoundError(f"no such suite: {path}")
-    files = [path] if path.is_file() else sorted(path.rglob("*.json"))
+    files = [path] if path.is_file() else sorted(path.glob("*.json"))
+    suite_label = label or (path.name if path.is_dir() else path.parent.name)
     cases: list[SuiteCase] = []
     problems: list[CaseProblem] = []
     for file in files:
@@ -116,17 +129,32 @@ def load_suite(suite: str | Path) -> tuple[list[SuiteCase], list[CaseProblem]]:
             )
             continue
         cases.append(
-            SuiteCase(name=name, spec=spec, path=file, action_space=action_space(spec.interface.kind))
+            SuiteCase(
+                name=name,
+                spec=spec,
+                path=file,
+                suite=suite_label,
+                action_space=action_space(spec.interface.kind),
+            )
         )
     return cases, problems
 
 
 def _case_name(root: Path, file: Path) -> str:
-    """A stable, filesystem-safe case id: the path under the suite without `.json`."""
+    """A stable, filesystem-safe case id: the path under the suite without `.json`.
+
+    A suite may be a directory or one file (`--suite path/to/case.json`). For a single
+    file `relative_to` yields `Path('.')`, whose name is empty, so the file's stem is
+    the only sensible id and is handled before the relative-path branch.
+    """
+    if file.is_file() and file == root:
+        return file.stem
     try:
         relative = file.relative_to(root)
-    except ValueError:  # `suite` was a single file
-        relative = Path(file.name)
+    except ValueError:  # `suite` was a file and `file` is not resolvable under it
+        return file.stem
+    if not relative.name:
+        return file.stem
     parts = list(relative.with_suffix("").parts)
     return ".".join(parts)
 
@@ -207,6 +235,15 @@ def run_suite(
     """
     out = Path(out)
     runner = run or partial(default_run, config_path=config_path, seed=seed)
+    names = [case.name for case in cases]
+    duplicates = sorted({name for name in names if names.count(name) > 1})
+    if duplicates:
+        # Cell directories are keyed by case name, and two suites may legitimately have
+        # a `case-01`. Running both into one output directory would let the second cell
+        # overwrite the first's trace, so the collision is refused by name.
+        raise ValueError(
+            f"case names appear more than once across the suites being run: {duplicates}"
+        )
     rows: list[dict[str, Any]] = []
     for case in cases:
         for policy in policies:
@@ -249,6 +286,33 @@ def _manufacturing(report: dict[str, Any] | None) -> tuple[bool, list[float] | N
     return True, [float(value) for value in angles]
 
 
+def _orientation_source(report: dict[str, Any] | None) -> str | None:
+    """`declared` / `recommended` / `none` / `unknown`, or `None` for an old report.
+
+    Recorded separately from the boolean so the summary can say *who* chose the build
+    pose: a person who declared one and a search that supplied one are different
+    evidence (audit P2-2), and a memory-vs-model comparison must not blur them.
+    """
+    block = ((report or {}).get("verdicts") or {}).get("printable") or {}
+    source = (block.get("orientation") or {}).get("source")
+    return source if isinstance(source, str) and source else None
+
+
+def _decision_sources(report: dict[str, Any] | None) -> dict[str, int]:
+    """How many proposals came from memory, the rule layer, or a model.
+
+    `RepairPlan.proposed_by` is the only place a plan records where it came from
+    (`case` for a case-memory replay, `rule` for the deterministic ladder, `llm` for a
+    model decision). Counting it per cell is what lets the summary separate *memory
+    hits* from *model decisions* instead of crediting both to "the policy".
+    """
+    counts = {"case": 0, "rule": 0, "llm": 0, "human": 0, "other": 0}
+    for rnd in (report or {}).get("rounds") or ():
+        source = str(rnd.get("proposed_by") or "other")
+        counts[source if source in counts else "other"] += 1
+    return counts
+
+
 def _row_from_report(
     case: SuiteCase, policy: str, report: dict[str, Any], run_dir: Path
 ) -> dict[str, Any]:
@@ -256,8 +320,10 @@ def _row_from_report(
     budget = report["budget"]
     counts = report["counts"]
     manufacturing, orientation = _manufacturing(report)
+    decisions = _decision_sources(report)
     return {
         "case": case.name,
+        "suite": case.suite,
         "policy": policy,
         "status": "completed",
         "verdict": report["episode"]["verdict"],
@@ -278,10 +344,16 @@ def _row_from_report(
         "environment_errors": counts["environment_errors"],
         "unknown": counts["unknown"],
         "physical_failures_final": counts["physical_failures_final"],
+        # Memory and model decisions are separate columns: a policy that replayed a
+        # remembered action must not read as "the model chose this", nor the reverse.
+        "memory_hits": decisions["case"],
+        "model_decisions": decisions["llm"],
+        "proposed_by_counts": decisions,
         "kind": case.spec.interface.kind,
         "action_space": case.action_space,
         # 口径: "no orientation declared" is its own state, never a pass.
         "manufacturing_evaluated": manufacturing,
+        "orientation_source": _orientation_source(report),
         "print_orientation_deg": orientation,
         "final_clearance_mm": report["design"]["final_clearance_mm"],
         "trace": report["trace"]["path"],
@@ -301,6 +373,7 @@ def _error_row(
     """
     return {
         "case": case.name,
+        "suite": case.suite,
         "policy": policy,
         "status": "error",
         "verdict": None,
@@ -318,12 +391,16 @@ def _error_row(
         "environment_errors": None,
         "unknown": None,
         "physical_failures_final": None,
+        "memory_hits": None,
+        "model_decisions": None,
+        "proposed_by_counts": None,
         "kind": case.spec.interface.kind,
         "action_space": case.action_space,
         # A cell that produced no episode has no report to read, so nothing was
         # evaluated — the same answer as a run whose process has no overhang rule.
         # Unknown is never written as a pass (audit P0-1).
         "manufacturing_evaluated": False,
+        "orientation_source": None,
         "print_orientation_deg": None,
         "final_clearance_mm": None,
         "trace": str(run_dir / "trace.jsonl"),
