@@ -52,7 +52,7 @@ from __future__ import annotations
 import json
 import random
 import tomllib
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Protocol
@@ -98,7 +98,10 @@ __all__ = [
     "band_target",
     "build",
     "expressible",
+    "ladder_for",
     "load_ladder",
+    "params_signal",
+    "suggestions_for",
 ]
 
 #: The names `build` accepts, published so a CLI or an eval can list them (and
@@ -289,15 +292,24 @@ def _normalise(value: object) -> object:
     return str(value)
 
 
-def _signal(params: Mapping[str, object]) -> str:
+def params_signal(params: Mapping[str, object]) -> str:
     """A stable text for one parameter payload.
 
     `json.dumps(..., sort_keys=True)` over the normalised payload is the whole
     trick: two plans are "the same plan" iff their operator, targets and this text
     agree, and a text comparison is exact where a float comparison would need a
     tolerance nobody agrees on.
+
+    Public because two other readers need the identical notion of "the same
+    attempt": this module's repeat guard, and the LLM observation's decision not to
+    suggest a plan that already failed. A second spelling of it is how "differs by
+    one float" becomes "not the same plan".
     """
     return json.dumps(_normalise(dict(params)), sort_keys=True)
+
+
+#: Internal spelling, kept so the call sites below read like the sentence above.
+_signal = params_signal
 
 
 def _tried(history: Sequence[Round]) -> set[tuple[str, tuple[str, ...], str]]:
@@ -448,6 +460,170 @@ _BUILDERS: dict[str, Candidates] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# What the rule would do, stated for someone else (the model) to read
+# --------------------------------------------------------------------------- #
+#: How many operators one code's suggestion carries. Two is enough to show the
+#: intended lever and one alternative; longer lists turn the observation into a
+#: catalogue the model has to rank, which is the job it was hired to do.
+_SUGGESTIONS_PER_CODE = 2
+
+
+def ladder_for(
+    code: str, ladder: Mapping[str, tuple[str, ...]] | None = None
+) -> tuple[str, ...]:
+    """The operator priority list for `code`, then the shared fallback tail.
+
+    Module-level so `suggestions_for` and `RulePolicy` read the *same* source: a
+    suggestion that disagreed with what the rule actually does would teach a model
+    to imitate a policy nobody runs.
+    """
+    table = DEFAULT_LADDER if ladder is None else ladder
+    return tuple(table.get(code, ())) + FALLBACK_LADDER
+
+
+def _suggestion_certificate(code: str) -> FailureCertificate:
+    """A stand-in certificate for a builder that only reads the code.
+
+    Built here rather than threaded through from the observation: a suggestion is
+    asked about a *code*, and the measured magnitude belongs to the observation's
+    `failures` list. Copying it would give two places that can disagree about the
+    same number, and the one the model trusts would be the wrong one.
+    """
+    return FailureCertificate(
+        code=code,
+        family="geometry",
+        locus={},
+        magnitude={},
+        observed_by="suggestions",
+    )
+
+
+def _why(code: str, spec: DesignSpec) -> str:
+    """One sentence: what this code means and which number answers it.
+
+    The numbers are read from the spec and the band arithmetic, never invented, so
+    the sentence and `params_hint` cannot disagree — and a model reading it sees
+    *why* a value is the value, which is the difference between copying a budget
+    and understanding a fit.
+    """
+    band = spec.constraints
+    current = spec.clearance_mm
+    kind = spec.interface.kind
+    mid = band_target(band, "mid")
+    low = band_target(band, "low")
+    high = band_target(band, "high")
+    if code == CODE_INSUFFICIENT_CLEARANCE:
+        return (
+            f"the designed clearance {current:+.4f} mm is below the band "
+            f"[{band.min_clearance_mm}, {band.max_clearance_mm}] mm; {mid:.6f} mm is its "
+            "middle, and a delta operator wants the difference, not the target"
+        )
+    if code == CODE_EXCESSIVE_CLEARANCE:
+        return (
+            f"the designed clearance {current:+.4f} mm is above the band "
+            f"[{band.min_clearance_mm}, {band.max_clearance_mm}] mm; {low:.6f} mm — just "
+            "inside the lower edge — is the smallest change that satisfies it"
+        )
+    if code == CODE_GEOMETRIC_INTERFERENCE:
+        detail = ""
+        if expressible(kind, "resize_insert"):
+            delta = delta_for_clearance(kind, "resize_insert", current, low)
+            detail = (
+                f"; turning the insert down by {abs(delta):.6f} mm opens "
+                f"{low:.6f} mm of radial clearance"
+            )
+        return (
+            "the two parts overlap, so the fit needs a positive gap and "
+            f"{low:.6f} mm is the smallest one the band allows{detail}"
+        )
+    if code == CODE_INSERTION_PATH_BLOCKED:
+        return (
+            "the insert cannot reach its seat; opening the cavity to "
+            f"{high:.6f} mm (the loosest fit the band allows) can only widen the channel, "
+            "while moving the part is a guess that can add interference"
+        )
+    if code in ("below_min_wall", "unsupported_overhang"):
+        return (
+            "a printability failure has no measured size lever in this harness, so only a "
+            "paradigm change is suggested; do not invent a wall thickness"
+        )
+    if code in (CODE_JOINT_UNSTABLE, CODE_DYNAMIC_PENETRATION):
+        return (
+            "a physics failure has no measured size lever in this harness; the suggested "
+            "moves are a paradigm change or a re-generation of the interface"
+        )
+    return f"no specific rule for {code!r}; only the shared fallback rungs apply"
+
+
+def suggestions_for(
+    codes: Sequence[str],
+    spec: DesignSpec,
+    *,
+    limit: int = _SUGGESTIONS_PER_CODE,
+    skip: Collection[tuple[str, str]] = (),
+) -> dict[str, dict]:
+    """What the *rule* would do about each code, as numbers a model may copy.
+
+    This is the P3-2 feedback line: the LLM is given the deterministic baseline's
+    ladder for the codes it actually observed, together with the exact parameter
+    payloads that baseline would send. Two consequences, both deliberate:
+
+    * **The numbers are the rule's.** A model that copies `params_hint` sends a plan
+      whose arithmetic came from `band_target` / `delta_for_clearance`, not from a
+      plausible-looking digit it made up. The dimension it can get wrong is
+      *whether* to act, which is the decision it is actually being measured on.
+    * **It is not a single answer.** The list is the same priority order the rule
+      walks, so a model that disagrees can see the alternative and say why. Handing
+      it one action would collapse the comparison into "did the model imitate the
+      rule".
+
+    The structure, per code::
+
+        {"operators": ["set_clearance", "resize_feature"],
+         "params_hint": {"set_clearance": {...}, "resize_feature": {...}},
+         "why": "the designed clearance -0.1000 mm is below the band [0.1, 0.6] mm; ..."}
+
+    `params_hint[operator]` is the payload the rule would send for its *first*
+    candidate, JSON-ready (tuples become lists, floats are normalised to the trace's
+    six decimals). Operators the connector kind cannot express are absent, because a
+    suggestion the registry would refuse is worse than none: it invites a rejected
+    call.
+
+    `skip` holds ``(operator, `params_signal`)`` pairs already attempted, and the
+    rule's row is walked *past* them: the list is "what is still worth trying", not
+    "what the rule would have tried first" — a hint that repeats a failed attempt
+    invites the one action the history already ruled out. `limit` therefore counts
+    untried candidates.
+    """
+    kind = spec.interface.kind
+    attempted = set(skip)
+    suggestions: dict[str, dict] = {}
+    for code in dict.fromkeys(str(item) for item in codes):
+        entries: list[tuple[str, dict]] = []
+        for operator_id in ladder_for(code):
+            if not expressible(kind, operator_id):
+                continue
+            builder = _BUILDERS.get(operator_id)
+            if builder is None:
+                continue
+            for params in builder(spec, _suggestion_certificate(code)):
+                if (operator_id, params_signal(params)) in attempted:
+                    continue
+                entries.append((operator_id, params))
+                break
+            if len(entries) >= limit:
+                break
+        suggestions[code] = {
+            "operators": [operator_id for operator_id, _params in entries],
+            "params_hint": {
+                operator_id: _normalise(params) for operator_id, params in entries
+            },
+            "why": _why(code, spec),
+        }
+    return suggestions
+
+
 def load_ladder(path: str | Path) -> dict[str, tuple[str, ...]]:
     """A ladder override from a TOML file, merged over `DEFAULT_LADDER`.
 
@@ -502,7 +678,7 @@ class RulePolicy:
     geom_calls_per_round: int = 1
 
     def ladder_for(self, code: str) -> tuple[str, ...]:
-        return tuple(self.ladder.get(code, ())) + FALLBACK_LADDER
+        return ladder_for(code, self.ladder)
 
     def propose(
         self,

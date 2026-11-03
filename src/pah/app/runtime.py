@@ -588,6 +588,34 @@ class SpecBridge:
 
 
 # --------------------------------------------------------------------------- #
+# The decision layer's own error ledger
+# --------------------------------------------------------------------------- #
+#: What a report row from `LlmPolicy.errors` calls a fault that never reached a
+#: model. The same word the certificate vocabulary uses for a broken tool.
+_ENVIRONMENT_ERROR = "environment"
+
+
+def _policy_errors(policy: Any) -> list[dict]:
+    """The decision layer's error ledger, if the policy keeps one.
+
+    A provider timeout and a model that found nothing to do both reach the loop as
+    `None`, and the loop records both as `infeasible` — correctly, because the loop
+    may not distinguish what it cannot see. The policy can, so it keeps a ledger and
+    this is where the runtime reads it. Absent for the deterministic policies, which
+    cannot fail this way.
+    """
+    rows = getattr(policy, "errors", None)
+    if not isinstance(rows, list):
+        return []
+    return [dict(row) for row in rows if isinstance(row, dict)]
+
+
+def _environment_error_rows(llm_errors: Sequence[dict]) -> list[dict]:
+    """The ledger rows that are a tool fault rather than a strategy failure."""
+    return [row for row in llm_errors if row.get("kind") == _ENVIRONMENT_ERROR]
+
+
+# --------------------------------------------------------------------------- #
 # The runtime
 # --------------------------------------------------------------------------- #
 class Runtime:
@@ -727,6 +755,10 @@ class Runtime:
             )
 
         policy = self.policy_for(policy_name)
+        # Where the decision layer's ledger stood before this episode. A runtime can
+        # run several episodes with the same cached policy, so the report must carry
+        # *this* episode's refusals, not everything since the process started.
+        errors_before = len(_policy_errors(policy))
         ticket_id = key("ticket", spec.spec_id, spec.content_key(), policy_name)
         started = time.monotonic()
 
@@ -880,6 +912,7 @@ class Runtime:
             budget=budget,
             wall_s=time.monotonic() - started,
             notes=notes,
+            llm_errors=_policy_errors(policy)[errors_before:],
         )
         text = json.dumps(report, ensure_ascii=False, indent=2, default=str) + "\n"
         # The payload is the finished document, so a replay is byte-identical to the
@@ -1096,15 +1129,22 @@ class Runtime:
         budget: Budget,
         wall_s: float,
         notes: Sequence[str],
+        llm_errors: Sequence[dict] = (),
     ) -> dict:
         rounds = list(ticket.rounds)
         used = ticket.used
-        environment_errors = sum(
+        # Two sources, one counter. A verifier that could not run and a decision layer
+        # that could not be reached are the same fact to whoever reads the row: the
+        # harness, not the design, is what failed. The split is kept beside the total
+        # (`environment_error_sources`) so a report can still say which half.
+        certificate_environment_errors = sum(
             1
             for rnd in rounds
             for cert in rnd.evidence
             if cert.family == "environment"
         ) + sum(1 for cert in certificates if cert.family == "environment")
+        llm_environment_errors = len(_environment_error_rows(llm_errors))
+        environment_errors = certificate_environment_errors + llm_environment_errors
         unknown_rounds = [rnd.index for rnd in rounds if rnd.verdict in ("error", "aborted")]
         error_rounds = [rnd.index for rnd in rounds if rnd.verdict == "error"]
         verifier_errors = [
@@ -1218,6 +1258,20 @@ class Runtime:
                 "calls": sum(rnd.cost.llm_calls for rnd in rounds),
                 "tokens": sum(rnd.cost.tokens for rnd in rounds),
                 "billing_note": "calls and tokens are the comparison unit; money is provider-declared",
+                # Decisions the model never got to make, and decisions it made badly.
+                # The loop reports both as `infeasible` and may not distinguish them:
+                # it only sees `None`. Without this list a provider outage and a model
+                # that found nothing to do are the same row, and an equal-budget
+                # comparison quietly charges the harness's breakage to the policy.
+                # `kind` is the split that matters: `environment` means the decision
+                # never reached a model (timeout, refused key, dead endpoint) and must
+                # stay out of the policy's failure rate; `answer` means a model replied
+                # and the reply was unusable, which is the policy failing.
+                "errors": [dict(row) for row in llm_errors],
+                "environment_errors": llm_environment_errors,
+                "answer_errors": sum(
+                    1 for row in llm_errors if row.get("kind") == "answer"
+                ),
             },
             # Why an episode ended without a decision. An environment certificate means
             # the tool could not answer — a missing resource package, a crashed
@@ -1246,6 +1300,13 @@ class Runtime:
                 "final_codes": sorted({cert.code for cert in certificates}),
                 # Tool health, kept strictly apart from the repair outcome.
                 "environment_errors": environment_errors,
+                # Which half of that number is which. A verifier that could not run
+                # and a model that could not be reached both stop an episode, and a
+                # reader who cannot tell them apart retries the wrong thing.
+                "environment_error_sources": {
+                    "verifier": certificate_environment_errors,
+                    "llm": llm_environment_errors,
+                },
                 "verifier_error_events": len(verifier_errors),
                 # State that could not be established: an errored/aborted round, or a
                 # final verdict of `failed`. Never counted as a pass.

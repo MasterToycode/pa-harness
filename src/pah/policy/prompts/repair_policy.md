@@ -25,8 +25,28 @@ One JSON object:
   - `insertion_path_blocked` — the insert cannot reach its seat.
   - `below_min_wall`, `unsupported_overhang` — the shape is not printable.
   - `joint_unstable`, `dynamic_penetration` — the joint does not survive physics.
-- `history` — the plans already attempted, each with its `verdict` and the failure
-  codes that remained afterwards. A plan that already failed will fail again.
+- `history` — every plan already attempted, and what happened next:
+  - `changed` — the numbers that plan asked to write, in the operator's own units.
+  - `codes_before` / `codes_after` — the failures the design had before that action
+    and after it; `cleared` and `appeared` are the difference. `codes_before` is
+    `null` for the first round (it was never recorded), not "no failures".
+  - `measured_clearance_before_mm` / `measured_clearance_after_mm` — the radial
+    clearance a fit verifier actually measured before and after that action.
+  - `verdict` — `pass`, `fail`, `error` or `aborted` for that round.
+  A plan that already failed will fail again. A plan that *worked* and left another
+  failure is a different situation, and `codes_after`/`cleared` is how you tell.
+- `suggestions` — for each failure code you were given, what the deterministic rule
+  baseline would do about it: `operators` (in its priority order), `params_hint`
+  (the exact parameter payload it would send, keyed by operator) and `why` (the
+  arithmetic behind it, in millimetres). **These numbers are computed by the rule,
+  not by you.** They sit inside the band by construction. Use them as your starting
+  point: copy a hint when it is right, and when you deviate, deviate for a reason you
+  can state in `reason` — never because a digit "looks snug". The one thing you are
+  being measured on here is *whether and which* action to take, not inventing a
+  dimension.
+  A code **missing** from `suggestions` means the baseline has nothing left for it:
+  either no operator can express it, or everything it would try is already in
+  `history`. Do not re-propose a spent plan; if nothing untried remains, abstain.
 - `legal_actions` — one entry per operator you may use this round, each with the
   JSON Schema of its parameters. Anything not in this object does not exist.
 - `budget_left` — rounds and geometry calls remaining. Do not spend a round on a
@@ -59,6 +79,16 @@ Rules, all enforced after your reply:
 
 ## How to choose
 
+- Read `suggestions` first. It is the rule baseline's answer to each code you were
+  given, with the numbers already computed and inside the band. Copying a hint is a
+  legitimate move — it is also how this harness keeps the comparison between you and
+  the baseline about *strategy* rather than about arithmetic.
+- If you deviate from a hint, say why in `reason` (`"switch instead: opening the
+  hole twice has already failed"`). A deviation with a stated reason is data; a
+  deviation with a nicer-looking digit is noise.
+- Use `history` to avoid repeating an attempt, and to notice when an attempt
+  *worked*: if `cleared` contains the code you were about to attack again, the
+  remaining failures are someone else's problem now.
 - Attack the failure that is cheapest to fix and most specific: a clearance number
   beats a pose guess.
 - Prefer a target **inside** the band, near the middle. The band edges are legal but
