@@ -615,6 +615,56 @@ def _environment_error_rows(llm_errors: Sequence[dict]) -> list[dict]:
     return [row for row in llm_errors if row.get("kind") == _ENVIRONMENT_ERROR]
 
 
+def _takes_a_positional_argument(function: Any) -> bool:
+    """Whether `function` can be called with one argument.
+
+    Asked instead of guessing, because the hook is optional and two shapes are
+    legitimate: `flush(rounds)` (a policy that wants the episode's rounds) and
+    `flush()` (a policy that already kept them). A `TypeError` from calling the
+    wrong shape would be indistinguishable from a broken ledger.
+    """
+    try:
+        parameters = inspect.signature(function).parameters.values()
+    except (TypeError, ValueError):  # a builtin or a C callable: assume it takes one
+        return True
+    return any(
+        parameter.kind
+        in (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            inspect.Parameter.VAR_POSITIONAL,
+        )
+        for parameter in parameters
+    )
+
+
+def _flush_policy(policy: Any, rounds: Sequence[Any]) -> tuple[int, str]:
+    """Let the decision layer do its end-of-episode bookkeeping; never fail the run.
+
+    A policy that keeps a ledger can only see *closed* rounds, and its last chance to
+    see one is `propose` — which the loop does not call after its final round,
+    because that round may be the one that passed. Without this call the ledger never
+    learns a success (measured 2026-11-02: 48 cells, 17 rows, all `fail`, so the
+    memory never replayed). So the flush belongs here, at the episode's end.
+
+    Two properties matter and neither is negotiable:
+
+    * **It cannot change the outcome.** The design's verdict was decided by the
+      verifiers before this line runs; a bookkeeping hook that raised would turn a
+      repaired design into a crashed run. A failure becomes a report note.
+    * **It is optional.** `rule`, `random` and `llm` keep no ledger and have no
+      `flush`; the hook is looked up, not required.
+    """
+    flush = getattr(policy, "flush", None)
+    if not callable(flush):
+        return 0, ""
+    try:
+        written = flush(rounds) if _takes_a_positional_argument(flush) else flush()
+    except Exception as error:  # noqa: BLE001 - see the docstring: bookkeeping, not outcome
+        return 0, f"policy bookkeeping failed: {type(error).__name__}: {error}"
+    return int(written or 0), ""
+
+
 # --------------------------------------------------------------------------- #
 # The runtime
 # --------------------------------------------------------------------------- #
@@ -873,6 +923,15 @@ class Runtime:
         ticket = self.store.tickets.get(ticket_id)
         if ticket is None:  # pragma: no cover - the store cannot lose an open ticket
             raise RuntimeError(f"ticket {ticket_id!r} disappeared from {db_path}")
+
+        # The decision layer's bookkeeping, after the loop and before the report: the
+        # closed rounds are final now, and the report should describe a ledger that has
+        # already caught up. A hook that cannot run costs a note, never the episode.
+        flushed, flush_problem = _flush_policy(policy, ticket.rounds)
+        if flush_problem:
+            notes.append(flush_problem)
+        elif flushed:
+            notes.append(f"policy bookkeeping: recorded {flushed} closed round(s)")
 
         # The final design intent: the assembly the loop left behind, or (on a clean
         # stop) the state the last produced round wrote.

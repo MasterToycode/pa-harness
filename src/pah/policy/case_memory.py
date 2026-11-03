@@ -184,6 +184,28 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _rounds_of(source: object, *, fallback: Sequence[Round]) -> Sequence[Round]:
+    """The rounds in a `Ticket`, a sequence of `Round`s, or nothing.
+
+    `None` means "the rounds this policy last saw", which is the only answer a bare
+    `flush()` can give — a policy holds no ticket, and inventing an empty list would
+    silently drop the very rounds the caller is trying to record.
+    """
+    if source is None:
+        return fallback
+    if isinstance(source, (str, bytes)):
+        raise TypeError(f"flush() needs a Ticket or a sequence of rounds, got {source!r}")
+    rounds = getattr(source, "rounds", None)
+    if isinstance(rounds, Sequence):
+        return rounds
+    if isinstance(source, Sequence):
+        return source
+    raise TypeError(
+        "flush() needs a Ticket (anything with .rounds) or a sequence of Round, "
+        f"got {type(source).__name__}"
+    )
+
+
 def _spec_or_none(assembly: Assembly) -> DesignSpec | None:
     """The design spec, or `None` for an assembly that is not on the design plane."""
     try:
@@ -406,6 +428,9 @@ class CaseMemoryPolicy:
     #: costs exactly one materialisation, same as a rule-based one.
     geom_calls_per_round: int = 1
     _pending: dict[str, _Pending] = field(default_factory=dict, init=False, repr=False)
+    #: The history last handed to `propose`, so a bare `flush()` after the episode has
+    #: something to look at. A tuple: this is a snapshot, not a place to grow state.
+    _seen: tuple[Round, ...] = field(default=(), init=False, repr=False)
     #: Where the last proposal came from: `"case_memory"`, `"inner"` or `"none"`.
     last_source: str = field(default="none", init=False)
     #: The record the last proposal replayed, for a trace to cite.
@@ -429,6 +454,7 @@ class CaseMemoryPolicy:
         """Replay the best proven action for this failure class, else ask `inner`."""
         self.last_source = "none"
         self.last_record = None
+        self._seen = tuple(history)
         self.flush(history)
         spec = _spec_or_none(assembly)
         evidence = [cert for cert in certs if cert.family != "environment"]
@@ -447,15 +473,31 @@ class CaseMemoryPolicy:
         return plan
 
     # -- bookkeeping -------------------------------------------------------
-    def flush(self, history: Sequence[Round]) -> int:
-        """Record the verdict of every round this policy proposed that has closed.
+    def flush(self, ticket_or_rounds: object = None) -> int:
+        """Record the verdict of every closed round this policy proposed, and say how many.
 
-        Idempotent per plan id: a round already recorded is popped from `_pending`, so
-        calling this twice (a resumed episode, a defensive caller) writes nothing twice.
-        Returns the number of rows written — which is the number of attempts credited.
+        This is a **separate entry point** and not just a `propose`-time chore,
+        because `propose` is never called after the last round: the loop stops the
+        moment a repair passes, so the *successful* round is exactly the one a
+        propose-time flush can never see. Measured 2026-11-02 on a 48-cell eval: the
+        ledger held 17 rows, every one `fail`, `candidates()` requires `passes > 0`
+        (`design` decision) and so returned nothing, and the memory never replayed —
+        the mechanism was dead and looked like a policy that simply never hit.
+
+        `ticket_or_rounds` accepts a `Ticket` (its `.rounds`), a sequence of
+        `Round`s, or `None` — then the history this policy last saw is flushed, which
+        is the most a bare `flush()` can honestly mean. Idempotent per plan id: a
+        recorded round is popped from `_pending`, so two callers (the composition
+        root at the end of an episode, then a resumed process) write nothing twice.
+        A round still open (`verdict is None`) is left pending.
+
+        Not flushed, by construction: rounds whose plan this instance never issued.
+        A resumed episode starts with an empty `_pending`, so it can only credit the
+        rounds it proposed itself; inventing provenance for the others would be the
+        ledger writing down a decision it did not make.
         """
         written = 0
-        for round_ in history:
+        for round_ in _rounds_of(ticket_or_rounds, fallback=self._seen):
             plan_id = str(getattr(round_.plan, "id", ""))
             pending = self._pending.get(plan_id)
             if pending is None:
