@@ -163,3 +163,7 @@ python -m pytest -q                  # 全库
 python scripts/acceptance.py         # 六条验收判据
 python scripts/smoke_design.py       # 物化/水密/确定性粗筛
 ```
+
+## 进度
+
+当前进度与「还差什么」见 [docs/progress-2026-11-03.md](docs/progress-2026-11-03.md)。
