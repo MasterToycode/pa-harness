@@ -129,6 +129,109 @@ def test_a_single_file_suite_loads_one_case(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
+# The success denominator: tool health is not a failed repair
+# --------------------------------------------------------------------------- #
+def summary_row(
+    *,
+    case: str,
+    policy: str = "rule",
+    suite: str = "holdout",
+    status: str = "completed",
+    verdict: str = "repaired",
+    repaired: int = 1,
+    env: int = 0,
+    unknown: int = 0,
+    memory: int = 0,
+    model: int = 0,
+    orientation_source: str = "recommended",
+) -> dict:
+    """One row shaped like `runner._row_from_report`'s output, for report-only tests."""
+    return {
+        "case": case,
+        "suite": suite,
+        "policy": policy,
+        "status": status,
+        "verdict": verdict,
+        "repaired_by_policy": repaired,
+        "rounds": 1,
+        "rounds_budget": 3,
+        "geom_calls_charged": 1,
+        "sim_calls_charged": 0,
+        "verifier_geom_calls": 1,
+        "verifier_sim_calls": 0,
+        "deterministic_generator": True,
+        "budget_overrun_total": 0,
+        "environment_errors": env,
+        "unknown": unknown,
+        "physical_failures_final": 0 if verdict == "repaired" else 1,
+        "memory_hits": memory,
+        "model_decisions": model,
+        "proposed_by_counts": {"case": memory, "rule": 0, "llm": model, "human": 0, "other": 0},
+        "kind": "peg_hole",
+        "action_space": 7,
+        "manufacturing_evaluated": orientation_source in {"declared", "recommended"},
+        "orientation_source": orientation_source,
+        "print_orientation_deg": [0.0, 0.0, 0.0] if orientation_source != "none" else None,
+        "final_clearance_mm": 0.2,
+        "trace": "t",
+        "report": "r",
+        "error": "",
+    }
+
+
+def test_environment_error_cells_leave_the_success_denominator():
+    """A cell whose verifier could not run is unknown, not a failed repair."""
+    rows = [
+        summary_row(case="holdout-00", repaired=1, env=0),
+        summary_row(case="holdout-01", verdict="exhausted", repaired=0, env=1, unknown=1),
+    ]
+
+    summary = eval_report.summary_markdown(
+        rows, suite="holdout", policies=["rule"], rounds=3
+    )
+    block = summary.split("## Per policy")[1].split("## Per case")[0]
+
+    # One repaired out of one *attributable* cell, not out of two.
+    assert "1/1 (100.0%)" in block
+    assert "1/2" not in block
+    # The exclusion is named under the table; a silent denominator is its own bug.
+    assert "denominator excludes 1 environment-error cell(s)" in block
+    assert "`rule`: 1" in block
+    # The health evidence is still visible on the cell and in the health column.
+    assert "env=1" in summary
+
+
+def test_a_suite_with_only_environment_errors_reports_na():
+    """`0/0` must never render as `0%`: no attributable cell, no ratio."""
+    rows = [
+        summary_row(
+            case="holdout-02", verdict="failed", repaired=0, env=2, unknown=1
+        )
+    ]
+
+    summary = eval_report.summary_markdown(
+        rows, suite="holdout", policies=["rule"], rounds=3
+    )
+    block = summary.split("## Per policy")[1].split("## Per case")[0]
+
+    assert "n/a" in block
+    assert "0/0" not in block
+    assert "(0.0%)" not in block
+    assert "denominator excludes 1 environment-error cell(s)" in block
+
+
+def test_no_denominator_note_when_nothing_was_excluded():
+    rows = [summary_row(case="holdout-03", repaired=1, env=0)]
+
+    summary = eval_report.summary_markdown(
+        rows, suite="holdout", policies=["rule"], rounds=3
+    )
+
+    assert "1/1 (100.0%)" in summary
+    assert "denominator excludes" not in summary
+
+
+# --------------------------------------------------------------------------- #
 # Runner: suite labels and memory/model columns
 # --------------------------------------------------------------------------- #
 def fake_report(

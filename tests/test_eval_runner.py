@@ -269,7 +269,11 @@ def test_outcome_and_tool_health_are_separate_columns():
         assert column in summary
     assert "success_rate" not in summary
     assert "100.0%" in summary  # rule: 1/1
-    assert "0/1 (0.0%)" in summary  # random: 0/1 completed
+    # random's only completed cell carries an environment error, so it leaves the
+    # `repaired_by_policy` denominator: `n/a`, not `0/1 (0.0%)`. The exclusion is
+    # named under the table rather than applied silently.
+    assert "n/a" in summary
+    assert "denominator excludes 1 environment-error cell(s)" in summary
     # The health flags sit on the cell, not in the outcome column.
     assert "exhausted (env=2, unknown=1)" in summary
     assert "harness_error" in summary

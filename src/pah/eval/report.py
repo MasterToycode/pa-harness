@@ -114,6 +114,12 @@ def summary_markdown(
         "never summed** — a crashed verifier must not look like a worse policy."
     )
     lines.append(
+        "- A cell that carries an environment error is removed from the "
+        "`repaired_by_policy` denominator (a verifier that could not run is not a "
+        "failed repair). The per-policy table names how many cells it excluded; a "
+        "suite left with no attributable cell reports `n/a`, never 0%."
+    )
+    lines.append(
         "- `memory_hits` counts proposals served from the case-memory ledger; "
         "`model_decisions` counts proposals a model made. They are separate evidence "
         "and are never added into one 'the policy decided' number."
@@ -125,9 +131,14 @@ def summary_markdown(
     lines.append(_manufacturing_line(rows))
     lines.append("")
     if len(groups) == 1:
+        lines.append("## Per policy")
+        lines.append("")
         lines.extend(_policies_table(completed, errors, policies))
         lines.append("")
+        lines.append("## Per case")
+        lines.append("")
         lines.extend(_cases_table(rows, policies))
+        lines.append("")
     else:
         for label, group in groups.items():
             lines.append(f"## Per policy — suite `{label}`")
@@ -175,17 +186,35 @@ def _policies_table(
     errors: Sequence[dict[str, Any]],
     policies: Sequence[str],
 ) -> list[str]:
+    """One row per policy, with a success denominator that excludes tool failures.
+
+    A cell whose verification produced an environment certificate is *unknown*, not a
+    failed repair: the loop could not establish whether that design was repaired. It
+    stays in the table (as `environment_errors` on the cell and in the health column)
+    but leaves the `repaired_by_policy` denominator, so a broken verifier cannot
+    depress the repair rate. The number excluded is named under the table — a silent
+    denominator change is its own kind of misreporting. When nothing attributable is
+    left, the rate is `n/a`: `0/0` must never render as `0%`.
+    """
     lines = [_HEADER, _RULE]
+    excluded: dict[str, int] = {}
     for policy in policies:
         cells = [row for row in completed if row["policy"] == policy]
         failures = [row for row in errors if row["policy"] == policy]
+        attempted = [
+            row for row in cells if not (row.get("environment_errors") or 0)
+        ]
+        excluded[policy] = len(cells) - len(attempted)
         lines.append(
             "| "
             + " | ".join(
                 [
                     f"`{policy}`",
                     str(len(cells) + len(failures)),
-                    _ratio(sum(1 for row in cells if row["repaired_by_policy"]), len(cells)),
+                    _ratio(
+                        sum(1 for row in attempted if row["repaired_by_policy"]),
+                        len(attempted),
+                    ),
                     _mean(row["rounds"] for row in cells),
                     _mean(row["geom_calls_charged"] for row in cells),
                     _mean(row["verifier_geom_calls"] for row in cells),
@@ -199,6 +228,17 @@ def _policies_table(
                 ]
             )
             + " |"
+        )
+    total_excluded = sum(excluded.values())
+    if total_excluded:
+        detail = ", ".join(
+            f"`{policy}`: {count}" for policy, count in excluded.items() if count
+        )
+        lines.append("")
+        lines.append(
+            f"- `repaired_by_policy` denominator excludes {total_excluded} "
+            f"environment-error cell(s) ({detail}): a verifier that could not run is "
+            "tool health, not a failed repair."
         )
     return lines
 
@@ -383,8 +423,14 @@ def _cell(row: dict[str, Any] | None) -> str:
 
 
 def _ratio(count: int, total: int) -> str:
+    """`n/t (p%)`, or `n/a` when the denominator is empty.
+
+    `0/0` renders as `0%` in every naive formatter, and a policy that was never
+    attributable looks maximally bad for the same reason a crashed verifier looks
+    like a defect — the two states must not produce the same number.
+    """
     if total == 0:
-        return "-"
+        return "n/a"
     return f"{count}/{total} ({100.0 * count / total:.1f}%)"
 
 
